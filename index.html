@@ -296,6 +296,12 @@ table.lineas tr:last-child td{border-bottom:0}
     <p>Bodega y taller · Futura Latinoamérica</p>
     <div id="contenedorBotonGoogle"></div>
     <div id="avisoIngreso" style="margin-top:18px"></div>
+    <button onclick="diagnostico()"
+            style="background:none;border:0;color:var(--gris);font-size:.75rem;
+                   text-decoration:underline;cursor:pointer;margin-top:22px">
+      Diagnóstico de configuración
+    </button>
+    <div id="cajaDiagnostico" style="margin-top:14px;text-align:left"></div>
   </div>
 </div>
 
@@ -519,10 +525,10 @@ var CONFIG = {
 
   // URL del despliegue del Web App de Apps Script.
   // Termina en /exec — NO en /dev.
-  API_URL: 'https://script.google.com/macros/s/AKfycbx2GV7g3OUUj4YRY7QII4MPFq5jZ9qTb30r1isV4JBEnLO8Ae5eHoTcJ7QbEl0Lzc8/exec',
+  API_URL: 'PEGAR_AQUI_LA_URL_DEL_WEB_APP',
 
   // El mismo Client ID que se puso en Codigo.gs. Tienen que coincidir.
-  CLIENT_ID: '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.apps.googleusercontent.com'
+  CLIENT_ID: 'PEGAR_AQUI_EL_CLIENT_ID.apps.googleusercontent.com'
 };
 
 var LLAVE_BORRADOR = 'garantias_borrador_v1';
@@ -1205,6 +1211,73 @@ function mostrarAviso(idCaja, tipo, titulo, detalles) {
 
 function limpiarAviso(idCaja) {
   document.getElementById(idCaja).innerHTML = '';
+}
+
+/* ==========================================================================
+   DIAGNÓSTICO
+
+   Muestra lo que la página REALMENTE tiene cargado, no lo que uno cree que
+   subió. Sirve sobre todo para el error 401 invalid_client, que casi siempre
+   es un Client ID mal copiado o una página vieja en caché.
+   ========================================================================== */
+function diagnostico() {
+  var filas = [];
+  var problemas = [];
+
+  var cid = String(CONFIG.CLIENT_ID || '');
+  var api = String(CONFIG.API_URL || '');
+
+  // --- Client ID ---
+  if (cid.indexOf('PEGAR_AQUI') === 0) {
+    problemas.push('El CLIENT_ID todavía tiene el valor de ejemplo. Hay que ponerle el real.');
+  } else if (cid.indexOf('.apps.googleusercontent.com') === -1) {
+    problemas.push('El CLIENT_ID no termina en .apps.googleusercontent.com. ' +
+                   'Puede que se haya pegado el "secreto de cliente" o el número de proyecto ' +
+                   'en vez del ID de cliente.');
+  } else if (cid !== cid.trim() || /\s/.test(cid)) {
+    problemas.push('El CLIENT_ID trae espacios o saltos de línea. Debe ir de corrido.');
+  }
+
+  // --- URL del Web App ---
+  if (api.indexOf('PEGAR_AQUI') === 0) {
+    problemas.push('Falta la URL del Web App.');
+  } else if (api.slice(-5) !== '/exec') {
+    problemas.push('La URL del Web App no termina en /exec. La de /dev no sirve.');
+  }
+
+  // --- Origen ---
+  if (location.protocol === 'file:') {
+    problemas.push('La página se abrió como archivo local (file://). Google Sign-In ' +
+                   'no funciona así: hay que abrirla por https, desde GitHub Pages.');
+  }
+
+  filas.push(['CLIENT_ID', cid || '(vacío)']);
+  filas.push(['Largo del CLIENT_ID', cid.length + ' caracteres']);
+  filas.push(['URL del Web App', api || '(vacío)']);
+  filas.push(['Origen de esta página', location.origin]);
+  filas.push(['Versión cargada', document.lastModified]);
+
+  var html =
+    '<div class="aviso ' + (problemas.length ? 'error' : 'info') + '">' +
+    '<b>' + (problemas.length ? 'Problemas encontrados' : 'La configuración se ve bien') + '</b>' +
+    (problemas.length ? '<ul><li>' + problemas.map(escapar).join('</li><li>') + '</li></ul>' : '') +
+    '</div>' +
+    '<div style="font-size:.72rem;font-family:monospace;background:#fff;' +
+    'border:1px solid var(--gris-linea);border-radius:8px;padding:12px;' +
+    'word-break:break-all;line-height:1.7">';
+
+  filas.forEach(function (f) {
+    html += '<div style="margin-bottom:7px"><b style="color:var(--azul)">' +
+            escapar(f[0]) + '</b><br>' + escapar(f[1]) + '</div>';
+  });
+
+  html += '</div>' +
+    '<div style="font-size:.72rem;color:var(--gris);margin-top:10px">' +
+    'Compare el CLIENT_ID de arriba, carácter por carácter, contra el que aparece ' +
+    'en Google Cloud Console → Credenciales. Si no coincide o si allá no existe, ' +
+    'ese es el problema.</div>';
+
+  document.getElementById('cajaDiagnostico').innerHTML = html;
 }
 
 /* ==========================================================================
