@@ -1,0 +1,1220 @@
+<!DOCTYPE html>
+<html lang="es-CR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1f3864">
+<title>Garantías — Futura Latinoamérica</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Garantías">
+
+<style>
+/* ==========================================================================
+   Base
+   ========================================================================== */
+:root{
+  --azul:#1f3864;
+  --azul-claro:#2d4f8a;
+  --azul-suave:#eef2f9;
+  --gris:#5a6472;
+  --gris-linea:#dde2ea;
+  --fondo:#f4f6fa;
+  --blanco:#fff;
+  --verde:#1b7a4b;
+  --verde-suave:#e6f4ec;
+  --rojo:#b3261e;
+  --rojo-suave:#fdecea;
+  --ambar:#8a6100;
+  --ambar-suave:#fff5e0;
+  --radio:10px;
+  --sombra:0 1px 3px rgba(16,24,40,.08), 0 1px 2px rgba(16,24,40,.06);
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  background:var(--fondo);
+  color:#1a1f2b;
+  font-size:16px;
+  line-height:1.5;
+  -webkit-text-size-adjust:100%;
+}
+button,input,select,textarea{font-family:inherit;font-size:16px}
+
+/* ==========================================================================
+   Encabezado y navegación
+   ========================================================================== */
+header{
+  background:var(--azul);color:#fff;
+  padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
+  position:sticky;top:0;z-index:50;
+  box-shadow:0 2px 8px rgba(16,24,40,.15);
+}
+.barra{display:flex;align-items:center;gap:12px;max-width:1100px;margin:0 auto}
+.marca{font-weight:700;font-size:1.05rem;letter-spacing:.2px;flex:1;min-width:0}
+.marca small{display:block;font-weight:400;font-size:.72rem;opacity:.8;letter-spacing:.3px}
+.chip-usuario{
+  background:rgba(255,255,255,.14);border-radius:999px;
+  padding:6px 12px;font-size:.78rem;white-space:nowrap;
+  display:flex;align-items:center;gap:8px;
+}
+.chip-usuario b{font-weight:600}
+.chip-usuario button{
+  background:none;border:0;color:#fff;opacity:.75;cursor:pointer;
+  font-size:.78rem;padding:0;text-decoration:underline;
+}
+nav{background:var(--azul-claro);position:sticky;top:0;z-index:49}
+nav .interior{display:flex;max-width:1100px;margin:0 auto;overflow-x:auto;-webkit-overflow-scrolling:touch}
+nav button{
+  background:none;border:0;color:rgba(255,255,255,.78);
+  padding:13px 18px;cursor:pointer;white-space:nowrap;
+  border-bottom:3px solid transparent;font-size:.9rem;font-weight:500;
+}
+nav button.activo{color:#fff;border-bottom-color:#fff;font-weight:600}
+
+/* ==========================================================================
+   Estructura
+   ========================================================================== */
+main{max-width:1100px;margin:0 auto;padding:18px 14px 90px}
+.pantalla{display:none}
+.pantalla.visible{display:block}
+h1{font-size:1.35rem;margin:0 0 4px}
+.subtitulo{color:var(--gris);font-size:.9rem;margin:0 0 20px}
+
+.tarjeta{
+  background:var(--blanco);border:1px solid var(--gris-linea);
+  border-radius:var(--radio);padding:18px;margin-bottom:16px;box-shadow:var(--sombra);
+}
+.tarjeta > h2{
+  font-size:.78rem;text-transform:uppercase;letter-spacing:.9px;
+  color:var(--azul);margin:0 0 14px;font-weight:700;
+}
+
+/* ==========================================================================
+   Formularios
+   ========================================================================== */
+.rejilla{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:640px){
+  .rejilla.dos{grid-template-columns:1fr 1fr}
+  .rejilla.tres{grid-template-columns:1fr 1fr 1fr}
+}
+.campo{display:flex;flex-direction:column;gap:5px;min-width:0}
+.campo.ancho{grid-column:1/-1}
+label{font-size:.8rem;font-weight:600;color:#33415c}
+label .req{color:var(--rojo)}
+label .ayuda{display:block;font-weight:400;color:var(--gris);font-size:.72rem;margin-top:1px}
+input,select,textarea{
+  width:100%;padding:11px 12px;border:1px solid #c6cedb;border-radius:8px;
+  background:#fff;color:inherit;
+}
+input:focus,select:focus,textarea:focus{
+  outline:0;border-color:var(--azul-claro);box-shadow:0 0 0 3px rgba(45,79,138,.15);
+}
+input:disabled,select:disabled{background:#f2f4f8;color:var(--gris)}
+textarea{min-height:74px;resize:vertical}
+.campo.error input,.campo.error textarea,.campo.error select{border-color:var(--rojo);background:#fffafa}
+
+/* ==========================================================================
+   Botones
+   ========================================================================== */
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:12px 20px;border-radius:8px;border:1px solid transparent;
+  font-weight:600;cursor:pointer;font-size:.92rem;
+}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primario{background:var(--azul);color:#fff}
+.btn.primario:hover:not(:disabled){background:#182b4d}
+.btn.secundario{background:#fff;color:var(--azul);border-color:#c6cedb}
+.btn.secundario:hover:not(:disabled){background:var(--azul-suave)}
+.btn.peligro{background:#fff;color:var(--rojo);border-color:#e8b4b0}
+.btn.pequeno{padding:8px 13px;font-size:.83rem}
+.acciones{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.barra-guardar{
+  position:sticky;bottom:0;background:rgba(244,246,250,.95);
+  backdrop-filter:blur(6px);padding:14px 0 calc(env(safe-area-inset-bottom) + 14px);
+  border-top:1px solid var(--gris-linea);margin-top:8px;
+}
+
+/* ==========================================================================
+   Líneas de artículo
+   ========================================================================== */
+.unidad{
+  border:1px solid var(--gris-linea);border-left:4px solid var(--azul-claro);
+  border-radius:var(--radio);padding:16px;margin-bottom:14px;background:#fdfdff;
+}
+.unidad-cabecera{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:10px;margin-bottom:14px;
+}
+.unidad-titulo{font-weight:700;color:var(--azul);font-size:.9rem}
+.nota-unidad{
+  background:var(--azul-suave);border-radius:8px;padding:11px 14px;
+  font-size:.82rem;color:#33415c;margin-bottom:16px;
+}
+
+/* ==========================================================================
+   Avisos
+   ========================================================================== */
+.aviso{border-radius:8px;padding:13px 15px;margin-bottom:16px;font-size:.88rem}
+.aviso.error{background:var(--rojo-suave);color:#7a1a15;border:1px solid #f2c3bf}
+.aviso.exito{background:var(--verde-suave);color:#0f5132;border:1px solid #b7dfc8}
+.aviso.info{background:var(--azul-suave);color:#243b63;border:1px solid #c9d6ec}
+.aviso.alerta{background:var(--ambar-suave);color:#6b4c00;border:1px solid #f0dba8}
+.aviso ul{margin:8px 0 0;padding-left:20px}
+.aviso b{display:block;margin-bottom:2px}
+
+/* ==========================================================================
+   Resultados de búsqueda
+   ========================================================================== */
+.resultado{
+  background:#fff;border:1px solid var(--gris-linea);border-radius:var(--radio);
+  padding:16px;margin-bottom:14px;box-shadow:var(--sombra);
+}
+.resultado-cabecera{
+  display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;
+  padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--gris-linea);
+}
+.gar{font-weight:700;color:var(--azul);font-size:1.05rem;font-variant-numeric:tabular-nums}
+.etiqueta{
+  font-size:.68rem;text-transform:uppercase;letter-spacing:.7px;
+  color:var(--gris);display:block;font-weight:600;
+}
+.dato{margin-bottom:9px;font-size:.9rem}
+.estado{
+  display:inline-block;padding:3px 11px;border-radius:999px;
+  font-size:.74rem;font-weight:700;
+}
+.estado.nuevo{background:var(--azul-suave);color:var(--azul)}
+.estado.proceso{background:var(--ambar-suave);color:var(--ambar)}
+.estado.cerrada{background:var(--verde-suave);color:var(--verde)}
+
+.tabla-envoltura{overflow-x:auto;margin-top:6px}
+table.lineas{width:100%;border-collapse:collapse;font-size:.85rem;min-width:520px}
+table.lineas th{
+  text-align:left;padding:8px 10px;background:var(--azul-suave);
+  color:var(--azul);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;
+  border-bottom:1px solid var(--gris-linea);white-space:nowrap;
+}
+table.lineas td{padding:9px 10px;border-bottom:1px solid #eef1f6;vertical-align:top}
+table.lineas tr:last-child td{border-bottom:0}
+
+/* ==========================================================================
+   Ingreso
+   ========================================================================== */
+.ingreso{
+  max-width:420px;margin:8vh auto;background:#fff;padding:34px 28px;
+  border-radius:14px;text-align:center;box-shadow:0 4px 20px rgba(16,24,40,.1);
+  border:1px solid var(--gris-linea);
+}
+.ingreso .escudo{
+  width:60px;height:60px;border-radius:14px;background:var(--azul);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:1.6rem;font-weight:700;margin:0 auto 18px;
+}
+.ingreso h1{font-size:1.2rem;margin-bottom:6px}
+.ingreso p{color:var(--gris);font-size:.88rem;margin:0 0 24px}
+#contenedorBotonGoogle{display:flex;justify-content:center;min-height:44px}
+
+.cargando{text-align:center;padding:40px;color:var(--gris)}
+.giro{
+  display:inline-block;width:22px;height:22px;border:3px solid var(--gris-linea);
+  border-top-color:var(--azul);border-radius:50%;animation:girar .8s linear infinite;
+}
+@keyframes girar{to{transform:rotate(360deg)}}
+.vacio{text-align:center;padding:44px 20px;color:var(--gris)}
+.vacio .icono{font-size:2.4rem;opacity:.35;display:block;margin-bottom:10px}
+
+/* ==========================================================================
+   IMPRESIÓN — boleta de recepción
+   ========================================================================== */
+#areaImpresion{display:none}
+
+@media print{
+  @page{size:letter;margin:14mm}
+  header,nav,.barra-guardar,.no-imprimir,main{display:none !important}
+  #areaImpresion{display:block !important}
+  body{background:#fff;font-size:11pt}
+  /* Todo en negro: los colores de pantalla salen lavados en blanco y negro
+     y gastan tóner de color sin necesidad en una impresora a color. */
+  #areaImpresion, #areaImpresion *{color:#000 !important}
+  #areaImpresion .pie{color:#444 !important}
+}
+
+#areaImpresion .doc{color:#000;font-size:11pt}
+#areaImpresion .enc{
+  display:flex;justify-content:space-between;align-items:flex-start;
+  border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:14px;gap:20px;
+}
+#areaImpresion .enc .empresa{font-size:9.5pt;line-height:1.35}
+#areaImpresion .enc .empresa .rs{font-size:13pt;font-weight:700;margin-bottom:3px}
+#areaImpresion .enc .doc-id{text-align:right;font-size:9.5pt;white-space:nowrap}
+#areaImpresion .enc .doc-id .tipo{font-size:11pt;font-weight:700;margin-bottom:5px;text-transform:uppercase}
+#areaImpresion .enc .doc-id .gar{font-size:15pt;font-weight:700;letter-spacing:.5px}
+#areaImpresion .enc img{max-height:52px;max-width:150px}
+
+#areaImpresion .bloque{margin-bottom:12px}
+#areaImpresion .bloque h3{
+  font-size:8.5pt;text-transform:uppercase;letter-spacing:1px;
+  border-bottom:1px solid #999;padding-bottom:3px;margin:0 0 7px;
+}
+#areaImpresion .par{display:flex;flex-wrap:wrap;gap:4px 26px;font-size:10pt}
+#areaImpresion .par div{min-width:180px;margin-bottom:3px}
+#areaImpresion .par span{font-weight:700}
+
+#areaImpresion table{width:100%;border-collapse:collapse;font-size:9pt;margin-top:5px}
+#areaImpresion table th{
+  border:1px solid #000;padding:5px 6px;background:#e8e8e8;
+  text-align:left;font-size:8pt;text-transform:uppercase;
+}
+#areaImpresion table td{border:1px solid #666;padding:5px 6px;vertical-align:top}
+
+#areaImpresion .firmas{
+  display:flex;gap:40px;margin-top:38px;page-break-inside:avoid;
+}
+#areaImpresion .firmas div{flex:1;text-align:center;font-size:9pt}
+#areaImpresion .firmas .linea{
+  border-top:1px solid #000;margin-bottom:4px;padding-top:4px;
+}
+#areaImpresion .pie{
+  margin-top:20px;font-size:7.5pt;color:#333;
+  border-top:1px solid #ccc;padding-top:6px;line-height:1.4;
+}
+</style>
+</head>
+<body>
+
+<!-- =========================================================================
+     INGRESO
+     ========================================================================= -->
+<div id="pantallaIngreso" class="pantalla visible">
+  <div class="ingreso">
+    <div class="escudo">FL</div>
+    <h1>Gestión de Garantías</h1>
+    <p>Bodega y taller · Futura Latinoamérica</p>
+    <div id="contenedorBotonGoogle"></div>
+    <div id="avisoIngreso" style="margin-top:18px"></div>
+  </div>
+</div>
+
+<!-- =========================================================================
+     APLICACIÓN
+     ========================================================================= -->
+<div id="app" style="display:none">
+
+  <header>
+    <div class="barra">
+      <div class="marca">
+        Gestión de Garantías
+        <small id="rotuloEmpresa">Futura Latinoamérica</small>
+      </div>
+      <div class="chip-usuario">
+        <b id="nombreUsuario">—</b>
+        <span id="rolUsuario" style="opacity:.75"></span>
+        <button onclick="cerrarSesion()">Salir</button>
+      </div>
+    </div>
+  </header>
+
+  <nav><div class="interior" id="menu"></div></nav>
+
+  <main>
+
+    <!-- ---------------------------------------------------------------
+         RECIBIR GARANTÍA
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaRecibir">
+      <h1>Recibir garantía</h1>
+      <p class="subtitulo">
+        Se registra cuando el artículo llega físicamente a bodega.
+        La boleta manual del cliente no cambia.
+      </p>
+
+      <div id="avisoRecibir"></div>
+
+      <form id="formulario" autocomplete="off">
+
+        <div class="tarjeta">
+          <h2>Boleta</h2>
+          <div class="rejilla dos">
+            <div class="campo">
+              <label for="num_boleta_manual">
+                N° de boleta manual <span class="req">*</span>
+                <span class="ayuda">El número preimpreso del talonario del mensajero</span>
+              </label>
+              <input id="num_boleta_manual" name="num_boleta_manual" inputmode="numeric" required>
+            </div>
+            <div class="campo">
+              <label for="fecha_recepcion">Fecha de recepción <span class="req">*</span></label>
+              <input type="date" id="fecha_recepcion" name="fecha_recepcion" required>
+            </div>
+            <div class="campo">
+              <label for="origen_tipo">Origen</label>
+              <select id="origen_tipo" name="origen_tipo" onchange="refrescarOrigenDetalle()">
+                <option value="">— Seleccione —</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="origen_detalle">
+                ¿Cuál?
+                <span class="ayuda">Sirve para saber a quién preguntarle si algo no cuadra</span>
+              </label>
+              <select id="origen_detalle" name="origen_detalle" disabled>
+                <option value="">— Primero elija el origen —</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Cliente</h2>
+          <div class="rejilla dos">
+            <div class="campo ancho">
+              <label for="cliente_nombre">Nombre del cliente <span class="req">*</span></label>
+              <input id="cliente_nombre" name="cliente_nombre" required>
+            </div>
+            <div class="campo">
+              <label for="cliente_identificacion">Cédula o identificación</label>
+              <input id="cliente_identificacion" name="cliente_identificacion">
+            </div>
+            <div class="campo">
+              <label for="cliente_telefono">
+                Teléfono
+                <span class="ayuda">Es al que se le llama cuando esté resuelto</span>
+              </label>
+              <input type="tel" id="cliente_telefono" name="cliente_telefono" inputmode="tel">
+            </div>
+            <div class="campo ancho">
+              <label for="cliente_correo">Correo <span class="ayuda">Opcional</span></label>
+              <input type="email" id="cliente_correo" name="cliente_correo">
+            </div>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Compra</h2>
+          <div class="rejilla tres">
+            <div class="campo">
+              <label for="factura_referencia">N° de factura</label>
+              <input id="factura_referencia" name="factura_referencia">
+            </div>
+            <div class="campo">
+              <label for="fecha_compra">
+                Fecha de la factura
+                <span class="ayuda">Es lo que sostiene si sigue en garantía</span>
+              </label>
+              <input type="date" id="fecha_compra" name="fecha_compra">
+            </div>
+            <div class="campo">
+              <label for="id_garantia_relacionada">
+                ¿Ya había entrado antes?
+                <span class="ayuda">N° de garantía anterior, si es reincidencia</span>
+              </label>
+              <input id="id_garantia_relacionada" name="id_garantia_relacionada" placeholder="GAR-2026-0000">
+            </div>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Artículos recibidos</h2>
+          <div class="nota-unidad">
+            <b>Una línea por unidad física.</b>
+            Si entran 5 unidades del mismo código, van 5 líneas: así se puede
+            reparar unas y desechar otras. Use <b>Agregar varias iguales</b> para
+            no digitar lo mismo cinco veces.
+          </div>
+
+          <div id="unidades"></div>
+
+          <div class="acciones" style="margin-top:6px">
+            <button type="button" class="btn secundario pequeno" onclick="agregarUnidad()">
+              + Agregar artículo
+            </button>
+            <button type="button" class="btn secundario pequeno" onclick="replicarUltima()">
+              ⧉ Agregar varias iguales
+            </button>
+          </div>
+        </div>
+
+        <div class="tarjeta">
+          <h2>Observaciones</h2>
+          <div class="campo">
+            <label for="observaciones">Notas generales de la recepción</label>
+            <textarea id="observaciones" name="observaciones"></textarea>
+          </div>
+        </div>
+
+        <div class="barra-guardar">
+          <div class="acciones">
+            <button type="submit" class="btn primario" id="btnGuardar">Guardar y registrar</button>
+            <button type="button" class="btn secundario" onclick="limpiarFormulario(true)">Limpiar</button>
+            <span id="estadoBorrador" style="font-size:.78rem;color:var(--gris)"></span>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <!-- ---------------------------------------------------------------
+         BOLETA GUARDADA
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaGuardada">
+      <div class="aviso exito">
+        <b>Boleta registrada</b>
+        Quedó guardada con número de garantía <b id="garantiaAsignada"></b>.
+      </div>
+      <div id="detalleGuardada"></div>
+      <div class="acciones no-imprimir" style="margin-top:18px">
+        <button class="btn primario" onclick="imprimirBoleta()">Imprimir boleta de recepción</button>
+        <button class="btn secundario" onclick="nuevaBoleta()">Registrar otra</button>
+      </div>
+      <div class="aviso info" style="margin-top:18px">
+        La impresión es opcional: el cliente ya tiene su copia manual y el
+        talonario conserva la suya. Imprima solo si necesita el archivo interno.
+      </div>
+    </section>
+
+    <!-- ---------------------------------------------------------------
+         BUSCAR
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaBuscar">
+      <h1>Buscar</h1>
+      <p class="subtitulo">
+        Por número de boleta manual, número de garantía o nombre del cliente.
+      </p>
+
+      <div class="tarjeta">
+        <form onsubmit="event.preventDefault();buscar()">
+          <div style="display:flex;gap:10px;flex-wrap:wrap">
+            <input id="textoBusqueda" placeholder="Ej: 12345 o GAR-2026-0001"
+                   style="flex:1;min-width:200px" autocomplete="off">
+            <button type="submit" class="btn primario">Buscar</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="resultados">
+        <div class="vacio">
+          <span class="icono">🔎</span>
+          Digite un número de boleta y presione Buscar.
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- =========================================================================
+     PLANTILLA DE IMPRESIÓN
+     ========================================================================= -->
+<div id="areaImpresion"></div>
+
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script>
+/* ==========================================================================
+   CONFIGURACIÓN — sustituir por los valores reales
+   ========================================================================== */
+var CONFIG = {
+
+  // URL del despliegue del Web App de Apps Script.
+  // Termina en /exec — NO en /dev.
+  API_URL: 'https://script.google.com/macros/s/AKfycbx2GV7g3OUUj4YRY7QII4MPFq5jZ9qTb30r1isV4JBEnLO8Ae5eHoTcJ7QbEl0Lzc8/exec',
+
+  // El mismo Client ID que se puso en Codigo.gs. Tienen que coincidir.
+  CLIENT_ID: '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.apps.googleusercontent.com'
+};
+
+var LLAVE_BORRADOR = 'garantias_borrador_v1';
+
+var estado = {
+  token: null,
+  usuario: null,
+  permisos: {},
+  empresa: {},
+  listas: {},
+  ultimaBoleta: null,
+  contadorUnidades: 0
+};
+
+/* ==========================================================================
+   LLAMADAS AL SERVIDOR
+
+   REGLA DE CORS — NO CAMBIAR EL Content-Type:
+   Apps Script responde con un redirect 302 hacia googleusercontent.com.
+   Con 'application/json' el navegador dispara un preflight OPTIONS que Apps
+   Script no contesta, y la llamada se bloquea. Con 'text/plain' la petición
+   es "simple", no hay preflight, y pasa. Es la trampa clásica.
+   ========================================================================== */
+async function api(accion, datos) {
+  if (CONFIG.API_URL.indexOf('PEGAR_AQUI') === 0) {
+    return { ok:false, error:'SIN_CONFIGURAR',
+             errores:['Falta pegar la URL del Web App en CONFIG.API_URL.'] };
+  }
+  try {
+    var res = await fetch(CONFIG.API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ accion: accion, token: estado.token, datos: datos || {} })
+    });
+    var salida = await res.json();
+
+    // El token de Google dura una hora. Al vencerse no se cierra la sesión de
+    // golpe: se devuelve a la pantalla de ingreso SIN desactivar la selección
+    // automática, para que Google vuelva a entrar solo y el usuario apenas
+    // vea un parpadeo.
+    if (salida.error === 'TOKEN_INVALIDO') {
+      cerrarSesion('Su sesión venció. Entrando de nuevo…', false);
+      return { ok:false, error:'TOKEN_INVALIDO', errores:['Sesión vencida.'] };
+    }
+    return salida;
+
+  } catch (err) {
+    return { ok:false, error:'SIN_CONEXION',
+             errores:['No se pudo conectar. Revise el internet e intente de nuevo.'] };
+  }
+}
+
+/* ==========================================================================
+   INGRESO
+   ========================================================================== */
+window.onload = function () {
+  var espera = setInterval(function () {
+    if (!(window.google && google.accounts && google.accounts.id)) return;
+    clearInterval(espera);
+
+    if (CONFIG.CLIENT_ID.indexOf('PEGAR_AQUI') === 0) {
+      mostrarAviso('avisoIngreso', 'error',
+        'Falta configurar el Client ID',
+        ['Abra index.html y llene el bloque CONFIG.']);
+      return;
+    }
+
+    google.accounts.id.initialize({
+      client_id: CONFIG.CLIENT_ID,
+      callback: alRecibirCredencial,
+      auto_select: true
+    });
+    google.accounts.id.renderButton(
+      document.getElementById('contenedorBotonGoogle'),
+      { theme:'filled_blue', size:'large', text:'signin_with',
+        shape:'pill', locale:'es', width:280 }
+    );
+  }, 200);
+};
+
+async function alRecibirCredencial(respuesta) {
+  estado.token = respuesta.credential;
+  mostrarAviso('avisoIngreso', 'info', 'Verificando…', []);
+
+  var r = await api('login', {});
+
+  if (!r.ok) {
+    var mensajes = {
+      USUARIO_NO_AUTORIZADO: 'Su correo no está dado de alta en el sistema. ' +
+                             'Pídale al administrador que lo agregue.',
+      TOKEN_INVALIDO:        'No se pudo verificar su cuenta de Google.',
+      SIN_CONEXION:          'No hay conexión con el servidor.',
+      SIN_CONFIGURAR:        'La aplicación no está configurada todavía.'
+    };
+    mostrarAviso('avisoIngreso', 'error', 'No se pudo entrar',
+      [mensajes[r.error] || (r.detalle || r.error)]);
+    estado.token = null;
+    return;
+  }
+
+  estado.usuario  = r.usuario;
+  estado.permisos = r.permisos;
+  estado.empresa  = r.empresa || {};
+  estado.listas   = r.listas  || {};
+
+  document.getElementById('pantallaIngreso').classList.remove('visible');
+  document.getElementById('pantallaIngreso').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+
+  document.getElementById('nombreUsuario').textContent = estado.usuario.nombre;
+  document.getElementById('rolUsuario').textContent    = '· ' + estado.usuario.rol;
+  if (estado.empresa.nombre_comercial) {
+    document.getElementById('rotuloEmpresa').textContent = estado.empresa.nombre_comercial;
+  }
+
+  armarMenu();
+  prepararFormulario();
+}
+
+/**
+ * explicito = true  -> el usuario apretó "Salir". Se apaga el auto-ingreso
+ *                      para que la próxima vez tenga que escoger cuenta.
+ * explicito = false -> se venció el token. Se deja el auto-ingreso prendido
+ *                      y se le pide a Google que reintente solo.
+ */
+function cerrarSesion(motivo, explicito) {
+  if (explicito === undefined) explicito = true;
+
+  estado.token = null;
+  estado.usuario = null;
+  document.getElementById('app').style.display = 'none';
+
+  var ingreso = document.getElementById('pantallaIngreso');
+  ingreso.style.display = 'block';
+  ingreso.classList.add('visible');
+  if (motivo) mostrarAviso('avisoIngreso', 'alerta', motivo, []);
+
+  try {
+    if (window.google && google.accounts && google.accounts.id) {
+      if (explicito) {
+        google.accounts.id.disableAutoSelect();
+      } else {
+        google.accounts.id.prompt();
+      }
+    }
+  } catch (e) { /* si falla, queda el botón visible */ }
+}
+
+/* ==========================================================================
+   MENÚ Y NAVEGACIÓN
+   ========================================================================== */
+function armarMenu() {
+  var opciones = [];
+  if (estado.permisos.registrarBoleta) {
+    opciones.push({ id:'Recibir', rotulo:'Recibir garantía' });
+  }
+  if (estado.permisos.consultar) {
+    opciones.push({ id:'Buscar', rotulo:'Buscar' });
+  }
+
+  var menu = document.getElementById('menu');
+  menu.innerHTML = '';
+  opciones.forEach(function (o, i) {
+    var b = document.createElement('button');
+    b.textContent = o.rotulo;
+    b.dataset.pantalla = o.id;
+    b.onclick = function () { irA(o.id); };
+    if (i === 0) b.classList.add('activo');
+    menu.appendChild(b);
+  });
+
+  if (opciones.length) irA(opciones[0].id);
+}
+
+function irA(id) {
+  ['Recibir', 'Buscar', 'Guardada'].forEach(function (p) {
+    var el = document.getElementById('pantalla' + p);
+    if (el) el.classList.toggle('visible', p === id);
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('#menu button'), function (b) {
+    b.classList.toggle('activo', b.dataset.pantalla === id);
+  });
+  window.scrollTo(0, 0);
+}
+
+/* ==========================================================================
+   FORMULARIO DE RECEPCIÓN
+   ========================================================================== */
+function prepararFormulario() {
+  var sel = document.getElementById('origen_tipo');
+  sel.innerHTML = '<option value="">— Seleccione —</option>';
+  (estado.listas.origen_tipo || []).forEach(function (v) {
+    var o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    sel.appendChild(o);
+  });
+
+  document.getElementById('fecha_recepcion').value = hoyISO();
+
+  if (!recuperarBorrador()) {
+    agregarUnidad();
+  }
+
+  document.getElementById('formulario').addEventListener('input', guardarBorrador);
+  document.getElementById('formulario').addEventListener('submit', guardar);
+}
+
+function refrescarOrigenDetalle() {
+  var tipo = document.getElementById('origen_tipo').value;
+  var sel = document.getElementById('origen_detalle');
+  var mapa = estado.listas.origen_detalle || {};
+  var opciones = mapa[tipo] || [];
+
+  sel.innerHTML = '';
+  if (!tipo) {
+    sel.disabled = true;
+    sel.innerHTML = '<option value="">— Primero elija el origen —</option>';
+    return;
+  }
+  sel.disabled = false;
+  sel.innerHTML = '<option value="">— Seleccione —</option>';
+  opciones.forEach(function (v) {
+    var o = document.createElement('option');
+    o.value = v; o.textContent = v;
+    sel.appendChild(o);
+  });
+}
+
+function agregarUnidad(copiaDe) {
+  estado.contadorUnidades++;
+  var n = estado.contadorUnidades;
+
+  var div = document.createElement('div');
+  div.className = 'unidad';
+  div.dataset.unidad = n;
+  div.innerHTML =
+    '<div class="unidad-cabecera">' +
+      '<span class="unidad-titulo">Unidad <span class="numero"></span></span>' +
+      '<button type="button" class="btn peligro pequeno" onclick="quitarUnidad(this)">Quitar</button>' +
+    '</div>' +
+    '<div class="rejilla dos">' +
+      '<div class="campo"><label>Código del artículo</label>' +
+        '<input name="codigo_articulo"></div>' +
+      '<div class="campo"><label>Marca' +
+        '<span class="ayuda">Es con lo que se negocia con el proveedor</span></label>' +
+        '<input name="marca"></div>' +
+      '<div class="campo ancho"><label>Descripción <span class="req">*</span></label>' +
+        '<input name="descripcion" required></div>' +
+      '<div class="campo"><label>Serie o lote</label>' +
+        '<input name="serie_lote"></div>' +
+      '<div class="campo"><label>Accesorios recibidos' +
+        '<span class="ayuda">Cables, bases, empaque. Evita reclamos después</span></label>' +
+        '<input name="accesorios_recibidos"></div>' +
+      '<div class="campo ancho"><label>Daño reportado por el cliente <span class="req">*</span></label>' +
+        '<textarea name="dano_reportado" required></textarea></div>' +
+    '</div>';
+
+  document.getElementById('unidades').appendChild(div);
+
+  if (copiaDe) {
+    ['codigo_articulo','marca','descripcion','serie_lote','accesorios_recibidos','dano_reportado']
+      .forEach(function (campo) {
+        var origen  = copiaDe.querySelector('[name="' + campo + '"]');
+        var destino = div.querySelector('[name="' + campo + '"]');
+        if (origen && destino) destino.value = origen.value;
+      });
+  }
+
+  renumerarUnidades();
+  return div;
+}
+
+function replicarUltima() {
+  var lista = document.querySelectorAll('#unidades .unidad');
+  if (!lista.length) { agregarUnidad(); return; }
+
+  var ultima = lista[lista.length - 1];
+  var desc = ultima.querySelector('[name="descripcion"]').value.trim();
+
+  if (!desc) {
+    alert('Llene primero la última unidad. De ahí se copian las demás.');
+    ultima.querySelector('[name="descripcion"]').focus();
+    return;
+  }
+
+  var texto = prompt('¿Cuántas unidades IGUALES a "' + desc + '" agrego?\n' +
+                     '(La que ya está llena no se cuenta.)', '1');
+  if (texto === null) return;
+
+  var cuantas = parseInt(texto, 10);
+  if (isNaN(cuantas) || cuantas < 1) return;
+  if (cuantas > 50) {
+    alert('Máximo 50 unidades de una sola vez.');
+    return;
+  }
+
+  for (var i = 0; i < cuantas; i++) agregarUnidad(ultima);
+  guardarBorrador();
+}
+
+function quitarUnidad(boton) {
+  var lista = document.querySelectorAll('#unidades .unidad');
+  if (lista.length <= 1) {
+    alert('La boleta debe tener al menos un artículo.');
+    return;
+  }
+  boton.closest('.unidad').remove();
+  renumerarUnidades();
+  guardarBorrador();
+}
+
+function renumerarUnidades() {
+  Array.prototype.forEach.call(
+    document.querySelectorAll('#unidades .unidad'),
+    function (div, i) { div.querySelector('.numero').textContent = (i + 1); }
+  );
+}
+
+function leerFormulario() {
+  var datos = {};
+  ['num_boleta_manual','fecha_recepcion','origen_tipo','origen_detalle',
+   'cliente_nombre','cliente_identificacion','cliente_telefono','cliente_correo',
+   'factura_referencia','fecha_compra','id_garantia_relacionada','observaciones']
+    .forEach(function (id) {
+      var el = document.getElementById(id);
+      datos[id] = el ? el.value.trim() : '';
+    });
+
+  datos.articulos = [];
+  Array.prototype.forEach.call(
+    document.querySelectorAll('#unidades .unidad'),
+    function (div) {
+      var u = {};
+      ['codigo_articulo','marca','descripcion','serie_lote',
+       'accesorios_recibidos','dano_reportado'].forEach(function (campo) {
+        var el = div.querySelector('[name="' + campo + '"]');
+        u[campo] = el ? el.value.trim() : '';
+      });
+      datos.articulos.push(u);
+    }
+  );
+  return datos;
+}
+
+async function guardar(evento) {
+  evento.preventDefault();
+
+  var boton = document.getElementById('btnGuardar');
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+  limpiarAviso('avisoRecibir');
+
+  var r = await api('crearBoleta', leerFormulario());
+
+  boton.disabled = false;
+  boton.textContent = 'Guardar y registrar';
+
+  if (!r.ok) {
+    mostrarAviso('avisoRecibir', 'error', 'No se pudo guardar',
+      r.errores || [r.detalle || r.error]);
+    window.scrollTo(0, 0);
+    return;
+  }
+
+  // El borrador solo se borra cuando el servidor confirmó.
+  localStorage.removeItem(LLAVE_BORRADOR);
+  estado.ultimaBoleta = r;
+
+  document.getElementById('garantiaAsignada').textContent = r.boleta.id_garantia;
+  document.getElementById('detalleGuardada').innerHTML = tarjetaResultado(r.boleta, r.articulos);
+  construirImpresion(r.boleta, r.articulos);
+  irA('Guardada');
+}
+
+function nuevaBoleta() {
+  limpiarFormulario(false);
+  irA('Recibir');
+}
+
+function limpiarFormulario(confirmar) {
+  if (confirmar && !confirm('¿Borrar todo lo digitado?')) return;
+
+  document.getElementById('formulario').reset();
+  document.getElementById('unidades').innerHTML = '';
+  document.getElementById('fecha_recepcion').value = hoyISO();
+  refrescarOrigenDetalle();
+  agregarUnidad();
+  localStorage.removeItem(LLAVE_BORRADOR);
+  document.getElementById('estadoBorrador').textContent = '';
+  limpiarAviso('avisoRecibir');
+  document.getElementById('num_boleta_manual').focus();
+}
+
+/* ==========================================================================
+   BORRADOR EN localStorage
+
+   El caso doloroso es concreto: seis artículos digitados, se cae el wifi de
+   bodega, se pierde todo. Pasa dos veces y la gente deja de usar el sistema.
+   ========================================================================== */
+function guardarBorrador() {
+  try {
+    var datos = leerFormulario();
+    datos._guardado = new Date().toISOString();
+    localStorage.setItem(LLAVE_BORRADOR, JSON.stringify(datos));
+    document.getElementById('estadoBorrador').textContent =
+      'Borrador guardado en este equipo · ' + horaCorta(new Date());
+  } catch (e) { /* sin espacio o modo privado: no es grave */ }
+}
+
+function recuperarBorrador() {
+  var crudo = null;
+  try { crudo = localStorage.getItem(LLAVE_BORRADOR); } catch (e) { return false; }
+  if (!crudo) return false;
+
+  var datos;
+  try { datos = JSON.parse(crudo); } catch (e) { return false; }
+
+  var tieneAlgo = (datos.num_boleta_manual || datos.cliente_nombre ||
+    (datos.articulos || []).some(function (a) { return a.descripcion; }));
+  if (!tieneAlgo) return false;
+
+  var cuando = datos._guardado ? new Date(datos._guardado) : null;
+  var rotulo = cuando ? (' del ' + cuando.toLocaleDateString('es-CR') +
+                         ' a las ' + horaCorta(cuando)) : '';
+
+  if (!confirm('Hay una boleta a medio digitar' + rotulo + '.\n\n' +
+               '¿La recupero?\n\nSi dice que no, se descarta.')) {
+    localStorage.removeItem(LLAVE_BORRADOR);
+    return false;
+  }
+
+  Object.keys(datos).forEach(function (id) {
+    if (id === 'articulos' || id === '_guardado') return;
+    var el = document.getElementById(id);
+    if (el) el.value = datos[id] || '';
+  });
+
+  refrescarOrigenDetalle();
+  if (datos.origen_detalle) {
+    document.getElementById('origen_detalle').value = datos.origen_detalle;
+  }
+
+  document.getElementById('unidades').innerHTML = '';
+  (datos.articulos || []).forEach(function (a) {
+    var div = agregarUnidad();
+    Object.keys(a).forEach(function (campo) {
+      var el = div.querySelector('[name="' + campo + '"]');
+      if (el) el.value = a[campo] || '';
+    });
+  });
+  if (!document.querySelectorAll('#unidades .unidad').length) agregarUnidad();
+
+  mostrarAviso('avisoRecibir', 'info', 'Se recuperó la boleta a medio digitar',
+    ['Revísela antes de guardar.']);
+  return true;
+}
+
+/* ==========================================================================
+   BÚSQUEDA
+   ========================================================================== */
+async function buscar() {
+  var texto = document.getElementById('textoBusqueda').value.trim();
+  if (!texto) return;
+
+  var caja = document.getElementById('resultados');
+  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Buscando…</div></div>';
+
+  var r = await api('buscar', { texto: texto });
+
+  if (!r.ok) {
+    caja.innerHTML = '<div class="aviso error"><b>No se pudo buscar</b>' +
+      (r.errores || [r.error]).join(' ') + '</div>';
+    return;
+  }
+
+  if (!r.total) {
+    caja.innerHTML =
+      '<div class="vacio"><span class="icono">📭</span>' +
+      'No hay ninguna boleta que coincida con <b>' + escapar(texto) + '</b>.<br>' +
+      '<span style="font-size:.86rem">Si la boleta existe en papel y no aparece aquí, ' +
+      'es que nunca se registró.</span></div>';
+    return;
+  }
+
+  var html = '<p class="subtitulo">' + r.total +
+             (r.total === 1 ? ' boleta encontrada' : ' boletas encontradas') +
+             (r.exacto ? '' : ' (coincidencia parcial)') + '</p>';
+
+  r.resultados.forEach(function (item) {
+    html += tarjetaResultado(item.boleta, item.articulos, true);
+  });
+  caja.innerHTML = html;
+}
+
+function tarjetaResultado(b, lineas, conBotonImprimir) {
+  var clase = b.estado_boleta === 'Cerrada' ? 'cerrada'
+            : (b.estado_boleta === 'Nuevo ingreso' ? 'nuevo' : 'proceso');
+
+  var html =
+    '<div class="resultado">' +
+      '<div class="resultado-cabecera">' +
+        '<div><span class="etiqueta">N° de garantía</span>' +
+          '<span class="gar">' + escapar(b.id_garantia) + '</span></div>' +
+        '<div><span class="etiqueta">Boleta manual</span>' +
+          '<b>' + escapar(b.num_boleta_manual) + '</b></div>' +
+        '<div><span class="etiqueta">Estado</span>' +
+          '<span class="estado ' + clase + '">' + escapar(b.estado_boleta) + '</span></div>' +
+      '</div>' +
+      '<div class="rejilla dos" style="margin-bottom:12px">' +
+        '<div class="dato"><span class="etiqueta">Cliente</span>' +
+          escapar(b.cliente_nombre) +
+          (b.cliente_telefono ? ' · ' + escapar(b.cliente_telefono) : '') + '</div>' +
+        '<div class="dato"><span class="etiqueta">Recibido</span>' +
+          escapar(soloFecha(b.fecha_recepcion)) +
+          (b.origen_tipo ? ' · ' + escapar(b.origen_tipo) : '') +
+          (b.origen_detalle ? ' (' + escapar(b.origen_detalle) + ')' : '') + '</div>' +
+      '</div>';
+
+  if (lineas && lineas.length) {
+    html += '<span class="etiqueta" style="margin-bottom:4px">' +
+            lineas.length + (lineas.length === 1 ? ' unidad' : ' unidades') + '</span>' +
+            '<div class="tabla-envoltura"><table class="lineas"><thead><tr>' +
+            '<th>Línea</th><th>Artículo</th><th>Daño reportado</th><th>Diagnóstico</th>' +
+            '</tr></thead><tbody>';
+
+    lineas.forEach(function (l) {
+      html += '<tr>' +
+        '<td style="white-space:nowrap">' + escapar(l.id_linea) + '</td>' +
+        '<td><b>' + escapar(l.descripcion) + '</b>' +
+          (l.marca ? '<br><span style="color:var(--gris);font-size:.82em">' +
+                     escapar(l.marca) + '</span>' : '') +
+          (l.codigo_articulo ? '<br><span style="color:var(--gris);font-size:.8em">' +
+                     escapar(l.codigo_articulo) + '</span>' : '') + '</td>' +
+        '<td>' + escapar(l.dano_reportado) + '</td>' +
+        '<td>' + escapar(l.diagnostico || 'Pendiente') + '</td>' +
+      '</tr>';
+    });
+    html += '</tbody></table></div>';
+  }
+
+  if (conBotonImprimir) {
+    html += '<div class="acciones no-imprimir" style="margin-top:14px">' +
+      '<button class="btn secundario pequeno" ' +
+      'onclick="imprimirDesdeBusqueda(\'' + escapar(b.id_garantia) + '\')">' +
+      'Imprimir boleta</button></div>';
+  }
+
+  html += '</div>';
+  return html;
+}
+
+async function imprimirDesdeBusqueda(idGarantia) {
+  var r = await api('obtener', { id_garantia: idGarantia });
+  if (!r.ok) { alert('No se pudo cargar la boleta.'); return; }
+  construirImpresion(r.boleta, r.articulos);
+  window.print();
+}
+
+/* ==========================================================================
+   IMPRESIÓN
+   ========================================================================== */
+function construirImpresion(b, lineas) {
+  var e = estado.empresa || {};
+
+  var filas = (lineas || []).map(function (l, i) {
+    return '<tr>' +
+      '<td style="text-align:center">' + (i + 1) + '</td>' +
+      '<td>' + escapar(l.codigo_articulo || '—') + '</td>' +
+      '<td>' + escapar(l.descripcion) +
+        (l.marca ? '<br><i>' + escapar(l.marca) + '</i>' : '') + '</td>' +
+      '<td>' + escapar(l.serie_lote || '—') + '</td>' +
+      '<td>' + escapar(l.accesorios_recibidos || '—') + '</td>' +
+      '<td>' + escapar(l.dano_reportado) + '</td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('areaImpresion').innerHTML =
+    '<div class="doc">' +
+      '<div class="enc">' +
+        '<div class="empresa">' +
+          (e.logo_url ? '<img src="' + escapar(e.logo_url) + '" alt=""><br>' : '') +
+          '<div class="rs">' + escapar(e.razon_social || '') + '</div>' +
+          (e.cedula_juridica ? 'Cédula jurídica ' + escapar(e.cedula_juridica) + '<br>' : '') +
+          escapar(e.direccion || '') + '<br>' +
+          'Tel. ' + escapar(e.telefono || '') + ' · ' + escapar(e.correo || '') +
+        '</div>' +
+        '<div class="doc-id">' +
+          '<div class="tipo">Boleta de recepción de garantía</div>' +
+          '<div class="gar">' + escapar(b.id_garantia) + '</div>' +
+          'Boleta manual N° <b>' + escapar(b.num_boleta_manual) + '</b><br>' +
+          'Recibido: ' + escapar(soloFecha(b.fecha_recepcion)) +
+        '</div>' +
+      '</div>' +
+
+      '<div class="bloque"><h3>Cliente</h3><div class="par">' +
+        '<div><span>Nombre:</span> ' + escapar(b.cliente_nombre) + '</div>' +
+        '<div><span>Identificación:</span> ' + escapar(b.cliente_identificacion || '—') + '</div>' +
+        '<div><span>Teléfono:</span> ' + escapar(b.cliente_telefono || '—') + '</div>' +
+        '<div><span>Correo:</span> ' + escapar(b.cliente_correo || '—') + '</div>' +
+        '<div><span>Factura:</span> ' + escapar(b.factura_referencia || '—') + '</div>' +
+        '<div><span>Fecha de factura:</span> ' + escapar(soloFecha(b.fecha_compra) || '—') + '</div>' +
+        '<div><span>Origen:</span> ' + escapar(b.origen_tipo || '—') +
+          (b.origen_detalle ? ' — ' + escapar(b.origen_detalle) : '') + '</div>' +
+      '</div></div>' +
+
+      '<div class="bloque"><h3>Artículos recibidos (' +
+        (lineas || []).length + ')</h3>' +
+        '<table><thead><tr>' +
+          '<th style="width:26px">#</th><th style="width:80px">Código</th>' +
+          '<th>Descripción</th><th style="width:70px">Serie</th>' +
+          '<th style="width:100px">Accesorios</th><th>Daño reportado</th>' +
+        '</tr></thead><tbody>' + filas + '</tbody></table>' +
+      '</div>' +
+
+      (b.observaciones ?
+        '<div class="bloque"><h3>Observaciones</h3>' +
+        escapar(b.observaciones) + '</div>' : '') +
+
+      '<div class="firmas">' +
+        '<div><div class="linea"></div>Recibido por<br><b>' +
+          escapar(b.recibido_por || '') + '</b></div>' +
+        '<div><div class="linea"></div>Entregado por</div>' +
+        '<div><div class="linea"></div>Fecha</div>' +
+      '</div>' +
+
+      '<div class="pie">' +
+        escapar(e.pie_legal || '') +
+        '<br>Documento generado por el sistema de gestión de garantías · ' +
+        escapar(new Date().toLocaleString('es-CR')) +
+      '</div>' +
+    '</div>';
+}
+
+function imprimirBoleta() {
+  if (!estado.ultimaBoleta) return;
+  construirImpresion(estado.ultimaBoleta.boleta, estado.ultimaBoleta.articulos);
+  window.print();
+}
+
+/* ==========================================================================
+   UTILIDADES
+   ========================================================================== */
+function escapar(v) {
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+
+function hoyISO() {
+  var d = new Date();
+  var m = String(d.getMonth() + 1).padStart(2, '0');
+  var dd = String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + m + '-' + dd;
+}
+
+/**
+ * El servidor manda "2026-08-07 00:00:00". Aquí se muestra 07/08/2026, que es
+ * como se lee una fecha en Costa Rica. Si llega en otro formato, se devuelve
+ * tal cual en vez de inventar algo.
+ */
+function soloFecha(v) {
+  if (!v) return '';
+  var parte = String(v).split(' ')[0];
+  var m = parte.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  return m ? (m[3] + '/' + m[2] + '/' + m[1]) : parte;
+}
+
+function horaCorta(d) {
+  return String(d.getHours()).padStart(2, '0') + ':' +
+         String(d.getMinutes()).padStart(2, '0');
+}
+
+function mostrarAviso(idCaja, tipo, titulo, detalles) {
+  var lista = (detalles && detalles.length)
+    ? '<ul><li>' + detalles.map(escapar).join('</li><li>') + '</li></ul>' : '';
+  document.getElementById(idCaja).innerHTML =
+    '<div class="aviso ' + tipo + '"><b>' + escapar(titulo) + '</b>' + lista + '</div>';
+}
+
+function limpiarAviso(idCaja) {
+  document.getElementById(idCaja).innerHTML = '';
+}
+
+/* ==========================================================================
+   PWA
+   ========================================================================== */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', function () {
+    navigator.serviceWorker.register('sw.js').catch(function () { /* sin drama */ });
+  });
+}
+</script>
+</body>
+</html>
