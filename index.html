@@ -528,7 +528,7 @@ var CONFIG = {
   API_URL: 'https://script.google.com/macros/s/AKfycbx2GV7g3OUUj4YRY7QII4MPFq5jZ9qTb30r1isV4JBEnLO8Ae5eHoTcJ7QbEl0Lzc8/exec',
 
   // El mismo Client ID que se puso en Codigo.gs. Tienen que coincidir.
-  CLIENT_ID: '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.apps.googleusercontent.com'
+  CLIENT_ID: '1079004713206-ru9fjg66cuplqbkfa5co3o8l2ah19tfv.apps.googleusercontent.com'
 };
 
 var LLAVE_BORRADOR = 'garantias_borrador_v1';
@@ -1228,13 +1228,22 @@ function diagnostico() {
   var api = String(CONFIG.API_URL || '');
 
   // --- Client ID ---
+  // El ID de cliente real siempre tiene esta forma:
+  //   112233445566-abcdefghijklmnop.apps.googleusercontent.com
+  //   └ números ─┘ └── letras y números ──┘
   if (cid.indexOf('PEGAR_AQUI') === 0) {
-    problemas.push('El CLIENT_ID todavía tiene el valor de ejemplo. Hay que ponerle el real.');
+    problemas.push('El CLIENT_ID todavía tiene el valor de ejemplo. Esta página es la que ' +
+                   'está publicada, así que el archivo que subió a GitHub no es el que editó.');
+  } else if (cid.indexOf('GOCSPX-') === 0) {
+    problemas.push('Eso es el SECRETO de cliente, no el ID. El secreto empieza con "GOCSPX-" ' +
+                   'y nunca se usa aquí. El ID de cliente empieza con números y se ve así: ' +
+                   '112233445566-abcdefg.apps.googleusercontent.com');
   } else if (cid.indexOf('.apps.googleusercontent.com') === -1) {
-    problemas.push('El CLIENT_ID no termina en .apps.googleusercontent.com. ' +
-                   'Puede que se haya pegado el "secreto de cliente" o el número de proyecto ' +
-                   'en vez del ID de cliente.');
-  } else if (cid !== cid.trim() || /\s/.test(cid)) {
+    problemas.push('El CLIENT_ID no termina en .apps.googleusercontent.com.');
+  } else if (!/^\d+-[A-Za-z0-9_]+\.apps\.googleusercontent\.com$/.test(cid)) {
+    problemas.push('El CLIENT_ID no tiene la forma correcta. Debe ser números, un guion, ' +
+                   'letras y números, y luego .apps.googleusercontent.com — sin nada más pegado.');
+  } else if (/\s/.test(cid)) {
     problemas.push('El CLIENT_ID trae espacios o saltos de línea. Debe ir de corrido.');
   }
 
@@ -1273,9 +1282,12 @@ function diagnostico() {
 
   html += '</div>' +
     '<div style="font-size:.72rem;color:var(--gris);margin-top:10px">' +
-    'Compare el CLIENT_ID de arriba, carácter por carácter, contra el que aparece ' +
-    'en Google Cloud Console → Credenciales. Si no coincide o si allá no existe, ' +
-    'ese es el problema.</div>';
+    'Estos son los valores que <b>esta página tiene cargados en este momento</b>, no los ' +
+    'del archivo que usted editó en su computadora. Si no coinciden, es que el archivo ' +
+    'nuevo no se subió.<br><br>' +
+    'En Google Cloud Console, el <b>origen autorizado</b> debe ser exactamente ' +
+    '<b>' + escapar(location.origin) + '</b> — sin barra al final y sin ninguna ruta después.' +
+    '</div>';
 
   document.getElementById('cajaDiagnostico').innerHTML = html;
 }
