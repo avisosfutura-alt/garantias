@@ -569,7 +569,11 @@ async function api(accion, datos) {
     // golpe: se devuelve a la pantalla de ingreso SIN desactivar la selección
     // automática, para que Google vuelva a entrar solo y el usuario apenas
     // vea un parpadeo.
-    if (salida.error === 'TOKEN_INVALIDO') {
+    //
+    // Excepción: durante el propio 'login' no se hace nada de eso, porque ahí
+    // no hay sesión que cerrar y el mensaje del servidor es justamente lo que
+    // hay que enseñarle a quien está instalando.
+    if (salida.error === 'TOKEN_INVALIDO' && accion !== 'login') {
       cerrarSesion('Su sesión venció. Entrando de nuevo…', false);
       return { ok:false, error:'TOKEN_INVALIDO', errores:['Sesión vencida.'] };
     }
@@ -617,14 +621,26 @@ async function alRecibirCredencial(respuesta) {
 
   if (!r.ok) {
     var mensajes = {
-      USUARIO_NO_AUTORIZADO: 'Su correo no está dado de alta en el sistema. ' +
-                             'Pídale al administrador que lo agregue.',
-      TOKEN_INVALIDO:        'No se pudo verificar su cuenta de Google.',
+      USUARIO_NO_AUTORIZADO: 'Su correo (' + (r.correo || '') + ') no está dado de alta ' +
+                             'en la hoja Usuarios, o está marcado como inactivo.',
       SIN_CONEXION:          'No hay conexión con el servidor.',
       SIN_CONFIGURAR:        'La aplicación no está configurada todavía.'
     };
-    mostrarAviso('avisoIngreso', 'error', 'No se pudo entrar',
-      [mensajes[r.error] || (r.detalle || r.error)]);
+
+    // Cuando el servidor explica el motivo, se muestra tal cual: es lo que
+    // dice qué revisar. Un "no se pudo verificar" genérico no ayuda a nadie.
+    var texto = (r.error === 'TOKEN_INVALIDO' && r.detalle)
+      ? r.detalle
+      : (mensajes[r.error] || r.detalle || r.error);
+
+    document.getElementById('avisoIngreso').innerHTML =
+      '<div class="aviso error"><b>No se pudo entrar</b>' +
+      '<div style="white-space:pre-wrap;font-family:monospace;font-size:.72rem;' +
+      'text-align:left;margin-top:6px">' + escapar(texto) + '</div>' +
+      (r.motivo ? '<div style="font-size:.7rem;opacity:.7;margin-top:8px">Código: ' +
+                  escapar(r.motivo) + '</div>' : '') +
+      '</div>';
+
     estado.token = null;
     return;
   }
