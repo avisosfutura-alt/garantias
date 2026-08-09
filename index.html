@@ -243,7 +243,9 @@ textarea{min-height:74px;resize:vertical}
   font-size:.68rem;text-transform:uppercase;letter-spacing:.7px;
   color:var(--gris);display:block;font-weight:600;
 }
-.dato{margin-bottom:9px;font-size:.9rem}
+.dato{margin-bottom:9px;font-size:.9rem;min-width:0}
+.dato.ancho{grid-column:1/-1}
+.sub{color:var(--gris);font-size:.78rem}
 /* --------------------------------------------------------------------------
    ESTADOS — un color por etapa, siempre el mismo en toda la aplicación
 
@@ -432,12 +434,19 @@ table.lineas tr:last-child td{border-bottom:0}
   display:flex;justify-content:space-between;align-items:flex-start;
   border-bottom:2px solid #000;padding-bottom:10px;margin-bottom:14px;gap:20px;
 }
-#areaImpresion .enc .empresa{font-size:9.5pt;line-height:1.35}
+#areaImpresion .enc .empresa{
+  font-size:9.5pt;line-height:1.35;
+  display:flex;align-items:center;gap:12px;
+}
+#areaImpresion .enc .datos-emp{min-width:0}
 #areaImpresion .enc .empresa .rs{font-size:13pt;font-weight:700;margin-bottom:3px}
 #areaImpresion .enc .doc-id{text-align:right;font-size:9.5pt;white-space:nowrap}
 #areaImpresion .enc .doc-id .tipo{font-size:11pt;font-weight:700;margin-bottom:5px;text-transform:uppercase}
 #areaImpresion .enc .doc-id .gar{font-size:15pt;font-weight:700;letter-spacing:.5px}
-#areaImpresion .enc img{max-height:52px;max-width:150px}
+#areaImpresion .enc img{height:56px;width:auto;flex:none}
+#areaImpresion .condiciones{page-break-inside:avoid;margin-top:16px}
+#areaImpresion .condiciones ul{margin:4px 0 0;padding-left:16px;font-size:8pt;line-height:1.45}
+#areaImpresion .condiciones li{margin-bottom:2px}
 
 #areaImpresion .bloque{margin-bottom:12px}
 #areaImpresion .bloque h3{
@@ -713,6 +722,32 @@ table.lineas tr:last-child td{border-bottom:0}
     </section>
 
     <!-- ---------------------------------------------------------------
+         TALLER — cola del técnico
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaTaller">
+      <h1>Taller</h1>
+      <p class="subtitulo">
+        Unidades esperando diagnóstico, de la más vieja a la más nueva.
+        Cada unidad se diagnostica por separado: de cinco iguales pueden
+        repararse tres y desecharse dos.
+      </p>
+      <div id="colaTaller"></div>
+    </section>
+
+    <!-- ---------------------------------------------------------------
+         RESOLUCIONES — cola del administrador
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaResoluciones">
+      <h1>Resoluciones</h1>
+      <p class="subtitulo">
+        Unidades ya diagnosticadas esperando decisión. El técnico opina desde
+        lo técnico; aquí se decide desde lo comercial. Quedan registradas las
+        dos cosas.
+      </p>
+      <div id="colaResoluciones"></div>
+    </section>
+
+    <!-- ---------------------------------------------------------------
          BUSCAR
          --------------------------------------------------------------- -->
     <section class="pantalla" id="pantallaBuscar">
@@ -799,6 +834,8 @@ var estado = {
   usuario: null,
   permisos: {},
   empresa: {},
+  emisores: {},
+  emisorPorDefecto: '',
   listas: {},
   ultimaBoleta: null,
   listaPrevia: null,
@@ -911,6 +948,8 @@ async function alRecibirCredencial(respuesta) {
   estado.usuario  = r.usuario;
   estado.permisos = r.permisos;
   estado.empresa  = r.empresa || {};
+  estado.emisores = r.emisores || {};
+  estado.emisorPorDefecto = r.emisor_por_defecto || '';
   estado.listas   = r.listas  || {};
 
   document.getElementById('pantallaIngreso').classList.remove('visible');
@@ -964,6 +1003,12 @@ function armarMenu() {
   if (estado.permisos.registrarBoleta) {
     opciones.push({ id:'Recibir', rotulo:'Recibir garantía' });
   }
+  if (estado.permisos.diagnosticar) {
+    opciones.push({ id:'Taller', rotulo:'Taller' });
+  }
+  if (estado.permisos.resolver) {
+    opciones.push({ id:'Resoluciones', rotulo:'Resoluciones' });
+  }
   if (estado.permisos.consultar) {
     opciones.push({ id:'Buscar', rotulo:'Buscar' });
   }
@@ -983,7 +1028,7 @@ function armarMenu() {
 }
 
 function irA(id) {
-  ['Recibir', 'Buscar', 'Guardada'].forEach(function (p) {
+  ['Recibir', 'Taller', 'Resoluciones', 'Buscar', 'Guardada'].forEach(function (p) {
     var el = document.getElementById('pantalla' + p);
     if (el) el.classList.toggle('visible', p === id);
   });
@@ -991,6 +1036,11 @@ function irA(id) {
     b.classList.toggle('activo', b.dataset.pantalla === id);
   });
   window.scrollTo(0, 0);
+
+  // Las colas se recargan al entrar: el técnico y el administrador trabajan
+  // sobre la misma lista y lo que uno despacha desaparece para el otro.
+  if (id === 'Taller')       cargarCola('diagnostico');
+  if (id === 'Resoluciones') cargarCola('resolucion');
 }
 
 /* ==========================================================================
@@ -1398,6 +1448,199 @@ function recuperarBorrador() {
 }
 
 /* ==========================================================================
+   FASE 2 — COLAS DE TALLER Y RESOLUCIONES
+
+   Las dos pantallas son la misma mecánica con distinto formulario: una lista
+   de unidades pendientes, cada una con lo que hay que llenar. Se guarda de
+   una en una, no todo junto: si algo falla, no se pierde el resto.
+   ========================================================================== */
+async function cargarCola(cola) {
+  var caja = document.getElementById(
+    cola === 'diagnostico' ? 'colaTaller' : 'colaResoluciones');
+
+  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Cargando…</div></div>';
+
+  var r = await api('listarCola', { cola: cola });
+
+  if (!r.ok) {
+    caja.innerHTML = '<div class="aviso error"><b>No se pudo cargar</b>' +
+      ((r.errores || [r.error]).join(' ')) + '</div>';
+    return;
+  }
+
+  if (!r.total) {
+    caja.innerHTML = '<div class="vacio"><span class="icono">✅</span>' +
+      (cola === 'diagnostico'
+        ? 'No hay nada pendiente de diagnóstico. El taller está al día.'
+        : 'No hay nada esperando resolución.') + '</div>';
+    return;
+  }
+
+  var atrasadas = r.pendientes.filter(function (p) {
+    return p.boleta.semaforo === 'atrasado';
+  }).length;
+
+  var html = '<div class="aviso ' + (atrasadas ? 'alerta' : 'info') + '">' +
+    '<b>' + r.total + (r.total === 1 ? ' unidad pendiente' : ' unidades pendientes') + '</b>' +
+    (atrasadas
+      ? atrasadas + (atrasadas === 1 ? ' lleva' : ' llevan') + ' más de 30 días en taller.'
+      : 'Ordenadas de la más vieja a la más nueva.') + '</div>';
+
+  r.pendientes.forEach(function (p) {
+    html += (cola === 'diagnostico') ? tarjetaDiagnostico(p) : tarjetaResolucion(p);
+  });
+
+  caja.innerHTML = html;
+}
+
+/** Encabezado común a las dos colas: de qué unidad estamos hablando. */
+function cabeceraUnidad(p) {
+  var l = p.linea, b = p.boleta;
+  var esInterna = (b.tipo_boleta === 'Revision interna');
+
+  return '' +
+    '<div class="unidad-cabecera">' +
+      '<span class="unidad-titulo">' + escapar(l.id_linea) + '</span>' +
+      '<span class="dias ' + claseDias(b.semaforo) + '">' +
+        textoDias(b.dias_en_taller) + ' en taller</span>' +
+    '</div>' +
+    '<div class="rejilla dos" style="margin-bottom:14px">' +
+      '<div class="dato"><span class="etiqueta">Artículo</span>' +
+        '<b>' + escapar(l.descripcion) + '</b>' +
+        (l.marca ? ' · ' + escapar(l.marca) : '') +
+        (l.codigo_articulo ? '<br><span class="sub">' + escapar(l.codigo_articulo) + '</span>' : '') +
+      '</div>' +
+      '<div class="dato"><span class="etiqueta">' +
+        (esInterna ? 'Procedencia' : 'Cliente') + '</span>' +
+        (esInterna ? 'De la empresa, sin vender' : escapar(b.cliente_nombre || '—')) +
+        '<br><span class="sub">' + escapar(b.id_garantia) +
+        (b.num_boleta_manual ? ' · física ' + escapar(b.num_boleta_manual) : '') + '</span>' +
+      '</div>' +
+      '<div class="dato ancho"><span class="etiqueta">Daño reportado</span>' +
+        escapar(l.dano_reportado || '—') + '</div>' +
+      (l.serie_lote ? '<div class="dato"><span class="etiqueta">Serie o lote</span>' +
+        escapar(l.serie_lote) + '</div>' : '') +
+      (l.accesorios_recibidos ? '<div class="dato"><span class="etiqueta">Accesorios</span>' +
+        escapar(l.accesorios_recibidos) + '</div>' : '') +
+    '</div>';
+}
+
+function opcionesDe(lista, escogido) {
+  return '<option value="">— Seleccione —</option>' +
+    (lista || []).map(function (v) {
+      return '<option value="' + escapar(v) + '"' +
+             (v === escogido ? ' selected' : '') + '>' + escapar(v) + '</option>';
+    }).join('');
+}
+
+function tarjetaDiagnostico(p) {
+  var l = p.linea;
+  var id = l.id_linea;
+
+  return '' +
+    '<div class="unidad" data-linea="' + escapar(id) + '">' +
+      cabeceraUnidad(p) +
+      '<div class="rejilla dos">' +
+        '<div class="campo"><label>¿Qué encontró? <span class="req">*</span>' +
+          '<span class="ayuda">"Sin defecto encontrado" también es un resultado válido</span></label>' +
+          '<select data-campo="diagnostico">' +
+            opcionesDe(estado.listas.diagnostico, l.diagnostico || 'Pendiente') +
+          '</select></div>' +
+        '<div class="campo"><label>¿Qué sugiere hacer?' +
+          '<span class="ayuda">Es su opinión técnica; la decisión final es del administrador</span></label>' +
+          '<select data-campo="sugerencia_tecnico">' +
+            opcionesDe(estado.listas.sugerencia, l.sugerencia_tecnico) +
+          '</select></div>' +
+        '<div class="campo ancho"><label>Detalle de lo que encontró' +
+          '<span class="ayuda">Esto es lo que se va a leer dentro de seis meses</span></label>' +
+          '<textarea data-campo="detalle_tecnico">' +
+            escapar(l.detalle_tecnico || '') + '</textarea></div>' +
+      '</div>' +
+      '<div class="acciones" style="margin-top:12px">' +
+        '<button class="btn primario pequeno" onclick="guardarDiagnostico(this)">' +
+          'Guardar diagnóstico</button>' +
+        '<span class="sub" data-aviso></span>' +
+      '</div>' +
+    '</div>';
+}
+
+function tarjetaResolucion(p) {
+  var l = p.linea;
+
+  return '' +
+    '<div class="unidad" data-linea="' + escapar(l.id_linea) + '">' +
+      cabeceraUnidad(p) +
+      '<div class="nota-unidad">' +
+        '<b>El técnico dice:</b> ' + escapar(l.diagnostico) +
+        (l.sugerencia_tecnico ? ' · sugiere <b>' + escapar(l.sugerencia_tecnico) + '</b>' : '') +
+        (l.detalle_tecnico ? '<br>' + escapar(l.detalle_tecnico) : '') +
+      '</div>' +
+      '<div class="rejilla dos">' +
+        '<div class="campo"><label>Resolución <span class="req">*</span>' +
+          '<span class="ayuda">Puede coincidir con la sugerencia o no. Ambas quedan registradas</span></label>' +
+          '<select data-campo="resolucion">' +
+            opcionesDe(estado.listas.resolucion, l.resolucion) +
+          '</select></div>' +
+        '<div class="campo"><label>Notas' +
+          '<span class="ayuda">Por qué se decidió así, si no es obvio</span></label>' +
+          '<input data-campo="notas_linea" value="' + escapar(l.notas_linea || '') + '"></div>' +
+      '</div>' +
+      '<div class="acciones" style="margin-top:12px">' +
+        '<button class="btn primario pequeno" onclick="guardarResolucion(this)">' +
+          'Guardar resolución</button>' +
+        '<span class="sub" data-aviso></span>' +
+      '</div>' +
+    '</div>';
+}
+
+function leerUnidad(boton) {
+  var caja = boton.closest('.unidad');
+  var datos = { id_linea: caja.dataset.linea };
+  Array.prototype.forEach.call(caja.querySelectorAll('[data-campo]'), function (el) {
+    datos[el.dataset.campo] = String(el.value).trim();
+  });
+  return { caja: caja, datos: datos };
+}
+
+async function guardarUnidad(boton, accion, cola, rotuloOk) {
+  var u = leerUnidad(boton);
+  var aviso = u.caja.querySelector('[data-aviso]');
+
+  boton.disabled = true;
+  var rotuloPrevio = boton.textContent;
+  boton.textContent = 'Guardando…';
+  aviso.textContent = '';
+  aviso.style.color = '';
+
+  var r = await api(accion, u.datos);
+
+  if (!r.ok) {
+    boton.disabled = false;
+    boton.textContent = rotuloPrevio;
+    aviso.style.color = 'var(--rojo)';
+    aviso.textContent = (r.errores || [r.detalle || r.error]).join(' ');
+    return;
+  }
+
+  // La unidad despachada sale de la cola: si se quedara, se volvería a
+  // trabajar dos veces. Se desvanece para que se note qué pasó.
+  aviso.style.color = 'var(--verde)';
+  aviso.textContent = rotuloOk + ' · boleta ' + escapar(r.estado_boleta);
+  u.caja.style.transition = 'opacity .5s';
+  u.caja.style.opacity = '.35';
+
+  setTimeout(function () { cargarCola(cola); }, 900);
+}
+
+function guardarDiagnostico(boton) {
+  guardarUnidad(boton, 'diagnosticar', 'diagnostico', 'Diagnóstico guardado');
+}
+
+function guardarResolucion(boton) {
+  guardarUnidad(boton, 'resolver', 'resolucion', 'Resolución guardada');
+}
+
+/* ==========================================================================
    BÚSQUEDA
    ========================================================================== */
 async function buscar() {
@@ -1715,15 +1958,36 @@ async function imprimirDesdeBusqueda(idGarantia) {
 /* ==========================================================================
    IMPRESIÓN
    ========================================================================== */
+/**
+ * Escoge quién firma la boleta.
+ *
+ * No todas las sucursales son la misma empresa: Uruca es Futura Latam, Barrio
+ * México y Paseo Colón operan bajo otra identidad tributaria, y Tres & Tres
+ * es SUMI FE S.A. Si la boleta saliera siempre a nombre de Futura, un cliente
+ * de Tres & Tres tendría un documento de una empresa que no le vendió nada.
+ *
+ * Solo la sucursal decide. Si vino por mensajero o el cliente la trajo al
+ * mostrador, no hay sucursal que identificar y manda el emisor por defecto.
+ */
+function emisorDe(b) {
+  var mapa = estado.emisores || {};
+  if (b && String(b.origen_tipo || '').trim() === 'Sucursal') {
+    var suc = String(b.origen_detalle || '').trim();
+    if (mapa[suc]) return mapa[suc];
+  }
+  return mapa[estado.emisorPorDefecto] || {};
+}
+
 function construirImpresion(b, lineas) {
   var e = estado.empresa || {};
+  var em = emisorDe(b);
   var esInterna = (b.tipo_boleta === 'Revision interna');
 
   // Los datos de contacto solo salen si existen: si no, no se imprime ni el
   // renglón, para que no quede un "Tel. ·" suelto.
   var contacto = [];
-  if (e.telefono) contacto.push('Tel. ' + e.telefono);
-  if (e.correo)   contacto.push(e.correo);
+  if (em.telefono) contacto.push('Tel. ' + em.telefono);
+  if (em.correo)   contacto.push(em.correo);
 
   var filas = (lineas || []).map(function (l, i) {
     return '<tr>' +
@@ -1741,11 +2005,15 @@ function construirImpresion(b, lineas) {
     '<div class="doc">' +
       '<div class="enc">' +
         '<div class="empresa">' +
-          (e.logo_url ? '<img src="' + escapar(e.logo_url) + '" alt=""><br>' : '') +
-          '<div class="rs">' + escapar(e.razon_social || '') + '</div>' +
-          (e.cedula_juridica ? 'Cédula jurídica ' + escapar(e.cedula_juridica) + '<br>' : '') +
-          escapar(e.direccion || '') +
-          (contacto.length ? '<br>' + escapar(contacto.join(' · ')) : '') +
+          (em.logo_url ? '<img src="' + escapar(em.logo_url) + '" alt="">' : '') +
+          '<div class="datos-emp">' +
+            '<div class="rs">' + escapar(em.razon_social || '') + '</div>' +
+            (em.cedula
+              ? escapar(em.rotulo_cedula || 'Cédula') + ' ' + escapar(em.cedula) + '<br>'
+              : '') +
+            escapar(em.direccion || '') +
+            (contacto.length ? '<br>' + escapar(contacto.join(' · ')) : '') +
+          '</div>' +
         '</div>' +
         '<div class="doc-id">' +
           '<div class="tipo">' +
@@ -1787,6 +2055,16 @@ function construirImpresion(b, lineas) {
       (b.observaciones ?
         '<div class="bloque"><h3>Observaciones</h3>' +
         escapar(b.observaciones) + '</div>' : '') +
+
+      /* Las condiciones solo van en la copia del cliente. En una revisión
+         interna no hay a quién informarle nada. Si no están definidas, el
+         bloque no se imprime y la boleta no queda con un hueco. */
+      (!esInterna && (e.terminos_garantia || []).length
+        ? '<div class="bloque condiciones"><h3>Condiciones de la garantía</h3>' +
+          '<ul>' + e.terminos_garantia.map(function (t) {
+            return '<li>' + escapar(t) + '</li>';
+          }).join('') + '</ul></div>'
+        : '') +
 
       '<div class="firmas">' +
         '<div><div class="linea"></div>Recibido por<br><b>' +

@@ -13,14 +13,17 @@
  * Eso obliga a todos los equipos a descargar el archivo nuevo.
  ******************************************************************************/
 
-var VERSION = 'garantias-v6';
+var VERSION = 'garantias-v9';
 
 var CASCARON = [
   './',
   './index.html',
   './manifest.json',
   './icon-192.png',
-  './icon-512.png'
+  './icon-512.png',
+  './logo-futura.png',
+  './logo-multitiendas.png',
+  './logo-tresytres.png'
 ];
 
 self.addEventListener('install', function (evento) {
