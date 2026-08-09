@@ -729,9 +729,9 @@ table.lineas tr:last-child td{border-bottom:0}
     <section class="pantalla" id="pantallaTaller">
       <h1>Taller</h1>
       <p class="subtitulo">
-        Unidades esperando diagnóstico, de la más vieja a la más nueva.
-        Cada unidad se diagnostica por separado: de cinco iguales pueden
-        repararse tres y desecharse dos.
+        Boletas con unidades esperando diagnóstico, de la más vieja a la más
+        nueva. Al abrir una salen sus unidades, y cada una se diagnostica por
+        separado: de cinco iguales pueden repararse tres y desecharse dos.
       </p>
       <div id="colaTaller"></div>
     </section>
@@ -742,9 +742,9 @@ table.lineas tr:last-child td{border-bottom:0}
     <section class="pantalla" id="pantallaResoluciones">
       <h1>Resoluciones</h1>
       <p class="subtitulo">
-        Unidades ya diagnosticadas esperando decisión. El técnico opina desde
-        lo técnico; aquí se decide desde lo comercial. Quedan registradas las
-        dos cosas.
+        Boletas con unidades ya diagnosticadas esperando decisión. El técnico
+        opina desde lo técnico; aquí se decide desde lo comercial. Quedan
+        registradas las dos cosas.
       </p>
       <div id="colaResoluciones"></div>
     </section>
@@ -838,6 +838,8 @@ var estado = {
   empresa: {},
   emisores: {},
   emisorPorDefecto: '',
+  colas: {},
+  boletaAbierta: {},
   build: '',
   listas: {},
   ultimaBoleta: null,
@@ -1459,10 +1461,23 @@ function recuperarBorrador() {
    de unidades pendientes, cada una con lo que hay que llenar. Se guarda de
    una en una, no todo junto: si algo falla, no se pierde el resto.
    ========================================================================== */
-async function cargarCola(cola) {
-  var caja = document.getElementById(
-    cola === 'diagnostico' ? 'colaTaller' : 'colaResoluciones');
+function cajaDeCola(cola) {
+  return document.getElementById(cola === 'diagnostico' ? 'colaTaller' : 'colaResoluciones');
+}
 
+/**
+ * Carga la cola y muestra la LISTA DE BOLETAS.
+ *
+ * El taller no trabaja artículos sueltos: le llega una caja con lo de una
+ * boleta y la atiende completa. Por eso se escoge la boleta primero y las
+ * unidades se ven al abrirla.
+ *
+ * `abrir` permite volver a entrar a la boleta que se estaba trabajando
+ * después de guardar una unidad, para no devolver al técnico a la lista
+ * cada vez que despacha una de cinco.
+ */
+async function cargarCola(cola, abrir) {
+  var caja = cajaDeCola(cola);
   caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Cargando…</div></div>';
 
   var r = await api('listarCola', { cola: cola });
@@ -1473,7 +1488,9 @@ async function cargarCola(cola) {
     return;
   }
 
-  if (!r.total) {
+  estado.colas[cola] = r;
+
+  if (!r.total_boletas) {
     caja.innerHTML = '<div class="vacio"><span class="icono">✅</span>' +
       (cola === 'diagnostico'
         ? 'No hay nada pendiente de diagnóstico. El taller está al día.'
@@ -1481,21 +1498,112 @@ async function cargarCola(cola) {
     return;
   }
 
-  var atrasadas = r.pendientes.filter(function (p) {
-    return p.boleta.semaforo === 'atrasado';
+  // Si la boleta que se estaba trabajando todavía tiene pendientes, se vuelve
+  // a abrir sola. Si ya no, cae de vuelta en la lista.
+  if (abrir && buscarGrupo(cola, abrir)) { abrirBoletaCola(cola, abrir); return; }
+
+  var atrasadas = r.boletas.filter(function (g) {
+    return g.boleta.semaforo === 'atrasado';
   }).length;
 
   var html = '<div class="aviso ' + (atrasadas ? 'alerta' : 'info') + '">' +
-    '<b>' + r.total + (r.total === 1 ? ' unidad pendiente' : ' unidades pendientes') + '</b>' +
+    '<b>' + r.total_boletas + (r.total_boletas === 1 ? ' boleta' : ' boletas') +
+    ' con ' + r.total_unidades +
+    (r.total_unidades === 1 ? ' unidad pendiente' : ' unidades pendientes') + '</b>' +
     (atrasadas
       ? atrasadas + (atrasadas === 1 ? ' lleva' : ' llevan') + ' más de 30 días en taller.'
       : 'Ordenadas de la más vieja a la más nueva.') + '</div>';
 
-  r.pendientes.forEach(function (p) {
+  var filas = r.boletas.map(function (g) {
+    var b = g.boleta;
+    var esInterna = (b.tipo_boleta === 'Revision interna');
+    var n = g.pendientes.length;
+
+    return '<tr onclick="abrirBoletaCola(\'' + cola + '\',\'' +
+             escapar(b.id_garantia) + '\')">' +
+      '<td class="col-punto"><span class="punto ' +
+        claseEstado(b.estado_boleta) + '"></span></td>' +
+      '<td class="num" data-rotulo="Boleta">' +
+        '<div class="id-sistema">' + escapar(b.id_garantia) + '</div>' +
+        '<div class="id-fisico">' +
+          (b.num_boleta_manual ? 'Física ' + escapar(b.num_boleta_manual) : 'Sin boleta física') +
+        '</div></td>' +
+      '<td data-rotulo="Tipo"><span class="tipo ' + (esInterna ? 'interna' : 'cliente') + '">' +
+        (esInterna ? 'Revisión interna' : 'Garantía') + '</span></td>' +
+      '<td data-rotulo="Cliente">' +
+        '<div class="cliente">' +
+          (esInterna ? 'Mercadería de la empresa' : escapar(b.cliente_nombre || '—')) + '</div>' +
+        '<div class="sub">' + escapar(soloFecha(b.fecha_recepcion)) +
+          (b.origen_detalle ? ' · ' + escapar(b.origen_detalle) : '') + '</div></td>' +
+      '<td data-rotulo="Por trabajar"><b style="color:var(--cian)">' + n +
+        (n === 1 ? ' unidad' : ' unidades') + '</b></td>' +
+      '<td data-rotulo="En taller"><span class="dias ' + claseDias(b.semaforo) + '">' +
+        textoDias(b.dias_en_taller) + '</span></td>' +
+      '<td data-rotulo="Sin movimiento"><span class="dias ' + claseDias(b.semaforo) + '">' +
+        textoDias(b.dias_sin_movimiento) + '</span></td>' +
+      '</tr>';
+  }).join('');
+
+  caja.innerHTML = html +
+    '<div class="envoltura-tabla"><table class="tabla-boletas"><thead><tr>' +
+      '<th class="col-punto"></th><th>Boleta</th><th>Tipo</th><th>Cliente</th>' +
+      '<th>Por trabajar</th><th>En taller</th><th>Sin movimiento</th>' +
+    '</tr></thead><tbody>' + filas + '</tbody></table></div>' +
+    '<p class="subtitulo" style="margin-top:12px;font-size:.8rem">' +
+      'Toque una boleta para ver sus unidades.</p>';
+}
+
+function buscarGrupo(cola, idGarantia) {
+  var r = estado.colas[cola];
+  if (!r || !r.boletas) return null;
+  for (var i = 0; i < r.boletas.length; i++) {
+    if (r.boletas[i].boleta.id_garantia === idGarantia) return r.boletas[i];
+  }
+  return null;
+}
+
+/** Abre una boleta de la cola y muestra sus unidades por trabajar. */
+function abrirBoletaCola(cola, idGarantia) {
+  var g = buscarGrupo(cola, idGarantia);
+  if (!g) { cargarCola(cola); return; }
+
+  var b = g.boleta;
+  var esInterna = (b.tipo_boleta === 'Revision interna');
+  var n = g.pendientes.length;
+
+  var html =
+    '<div class="acciones" style="margin-bottom:14px">' +
+      '<button class="btn secundario pequeno" onclick="cargarCola(\'' + cola + '\')">' +
+        '‹ Volver a la lista</button>' +
+    '</div>' +
+    '<div class="tarjeta">' +
+      '<div class="resultado-cabecera" style="border:0;margin:0;padding:0">' +
+        '<div><span class="etiqueta">Boleta</span>' +
+          '<span class="gar">' + escapar(b.id_garantia) + '</span></div>' +
+        '<div><span class="etiqueta">' + (esInterna ? 'Mercadería' : 'Cliente') + '</span>' +
+          '<b>' + (esInterna ? 'De la empresa, sin vender'
+                             : escapar(b.cliente_nombre || '—')) + '</b></div>' +
+        '<div><span class="etiqueta">Recibido</span>' +
+          escapar(soloFecha(b.fecha_recepcion)) + '</div>' +
+        '<div><span class="etiqueta">En taller</span>' +
+          '<span class="dias ' + claseDias(b.semaforo) + '">' +
+          textoDias(b.dias_en_taller) + '</span></div>' +
+        '<div><span class="etiqueta">Estado</span>' +
+          '<span class="estado ' + claseEstado(b.estado_boleta) + '">' +
+          escapar(b.estado_boleta) + '</span></div>' +
+      '</div>' +
+    '</div>' +
+    '<p class="subtitulo">' + n + (n === 1 ? ' unidad por trabajar' : ' unidades por trabajar') +
+      ' en esta boleta. Cada una se resuelve por separado.</p>';
+
+  g.pendientes.forEach(function (linea) {
+    var p = { linea: linea, boleta: b };
     html += (cola === 'diagnostico') ? tarjetaDiagnostico(p) : tarjetaResolucion(p);
   });
 
-  caja.innerHTML = html;
+  estado.boletaAbierta[cola] = idGarantia;
+  cajaDeCola(cola).innerHTML = html;
+  window.scrollTo(0, 0);
 }
 
 /** Encabezado común a las dos colas: de qué unidad estamos hablando. */
@@ -1503,23 +1611,17 @@ function cabeceraUnidad(p) {
   var l = p.linea, b = p.boleta;
   var esInterna = (b.tipo_boleta === 'Revision interna');
 
+  // El cliente, la fecha y los días ya salen en la cabecera de la boleta:
+  // repetirlos en cada unidad solo alarga la pantalla.
   return '' +
     '<div class="unidad-cabecera">' +
       '<span class="unidad-titulo">' + escapar(l.id_linea) + '</span>' +
-      '<span class="dias ' + claseDias(b.semaforo) + '">' +
-        textoDias(b.dias_en_taller) + ' en taller</span>' +
     '</div>' +
     '<div class="rejilla dos" style="margin-bottom:14px">' +
-      '<div class="dato"><span class="etiqueta">Artículo</span>' +
+      '<div class="dato ancho"><span class="etiqueta">Artículo</span>' +
         '<b>' + escapar(l.descripcion) + '</b>' +
         (l.marca ? ' · ' + escapar(l.marca) : '') +
         (l.codigo_articulo ? '<br><span class="sub">' + escapar(l.codigo_articulo) + '</span>' : '') +
-      '</div>' +
-      '<div class="dato"><span class="etiqueta">' +
-        (esInterna ? 'Procedencia' : 'Cliente') + '</span>' +
-        (esInterna ? 'De la empresa, sin vender' : escapar(b.cliente_nombre || '—')) +
-        '<br><span class="sub">' + escapar(b.id_garantia) +
-        (b.num_boleta_manual ? ' · física ' + escapar(b.num_boleta_manual) : '') + '</span>' +
       '</div>' +
       '<div class="dato ancho"><span class="etiqueta">Daño reportado</span>' +
         escapar(l.dano_reportado || '—') + '</div>' +
@@ -1548,8 +1650,13 @@ function tarjetaDiagnostico(p) {
       '<div class="rejilla dos">' +
         '<div class="campo"><label>¿Qué encontró? <span class="req">*</span>' +
           '<span class="ayuda">"Sin defecto encontrado" también es un resultado válido</span></label>' +
+          // "Pendiente" no se ofrece: es el valor con el que la unidad ya
+          // venía, y guardarlo no registraría ningún avance.
           '<select data-campo="diagnostico">' +
-            opcionesDe(estado.listas.diagnostico, l.diagnostico || 'Pendiente') +
+            opcionesDe(
+              (estado.listas.diagnostico || []).filter(function (v) { return v !== 'Pendiente'; }),
+              (l.diagnostico === 'Pendiente' ? '' : l.diagnostico)
+            ) +
           '</select></div>' +
         '<div class="campo"><label>¿Qué sugiere hacer?' +
           '<span class="ayuda">Es su opinión técnica; la decisión final es del administrador</span></label>' +
@@ -1609,6 +1716,7 @@ function leerUnidad(boton) {
 
 async function guardarUnidad(boton, accion, cola, rotuloOk) {
   var u = leerUnidad(boton);
+  var idBoleta = estado.boletaAbierta[cola] || '';
   var aviso = u.caja.querySelector('[data-aviso]');
 
   boton.disabled = true;
@@ -1634,7 +1742,9 @@ async function guardarUnidad(boton, accion, cola, rotuloOk) {
   u.caja.style.transition = 'opacity .5s';
   u.caja.style.opacity = '.35';
 
-  setTimeout(function () { cargarCola(cola); }, 900);
+  // Se vuelve a entrar a la misma boleta si todavía le quedan unidades: al
+  // técnico que va por la tercera de cinco no hay que devolverlo a la lista.
+  setTimeout(function () { cargarCola(cola, idBoleta); }, 900);
 }
 
 function guardarDiagnostico(boton) {
