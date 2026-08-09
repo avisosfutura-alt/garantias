@@ -545,6 +545,8 @@ table.lineas tr:last-child td{border-bottom:0}
         </div>
       </div>
       <div class="chip-usuario">
+        <button onclick="diagnosticoDentro()" title="Diagnóstico"
+                style="text-decoration:none;font-size:.95rem">⚙</button>
         <b id="nombreUsuario">—</b>
         <span id="rolUsuario" style="opacity:.75"></span>
         <button onclick="cerrarSesion()">Salir</button>
@@ -836,6 +838,7 @@ var estado = {
   empresa: {},
   emisores: {},
   emisorPorDefecto: '',
+  build: '',
   listas: {},
   ultimaBoleta: null,
   listaPrevia: null,
@@ -949,6 +952,7 @@ async function alRecibirCredencial(respuesta) {
   estado.permisos = r.permisos;
   estado.empresa  = r.empresa || {};
   estado.emisores = r.emisores || {};
+  estado.build    = r.build || '';
   estado.emisorPorDefecto = r.emisor_por_defecto || '';
   estado.listas   = r.listas  || {};
 
@@ -1971,11 +1975,32 @@ async function imprimirDesdeBusqueda(idGarantia) {
  */
 function emisorDe(b) {
   var mapa = estado.emisores || {};
+
   if (b && String(b.origen_tipo || '').trim() === 'Sucursal') {
     var suc = String(b.origen_detalle || '').trim();
     if (mapa[suc]) return mapa[suc];
   }
-  return mapa[estado.emisorPorDefecto] || {};
+
+  var porDefecto = mapa[estado.emisorPorDefecto];
+  if (porDefecto) return porDefecto;
+
+  /* Red de seguridad. Si el script desplegado es más viejo que esta página,
+     no manda la tabla de emisores y la boleta saldría con el encabezado en
+     blanco: sin razón social, sin cédula y sin logo. Una boleta sin membrete
+     es peor que una con el membrete por defecto, así que se arma uno con lo
+     que sí haya llegado.
+
+     Cuando esto se dispara, el diagnóstico lo dice con todas las letras. */
+  var e = estado.empresa || {};
+  return {
+    razon_social:  e.razon_social || e.nombre_comercial || '',
+    rotulo_cedula: 'Cédula jurídica',
+    cedula:        e.cedula_juridica || '',
+    direccion:     e.direccion || '',
+    telefono:      e.telefono || '',
+    correo:        e.correo || '',
+    logo_url:      e.logo_url || 'logo-futura.png'
+  };
 }
 
 function construirImpresion(b, lineas) {
@@ -2139,6 +2164,51 @@ function limpiarAviso(idCaja) {
    subió. Sirve sobre todo para el error 401 invalid_client, que casi siempre
    es un Client ID mal copiado o una página vieja en caché.
    ========================================================================== */
+/**
+ * Comprueba si una imagen carga de verdad, pidiéndola.
+ * Que el archivo esté en la carpeta del proyecto no significa nada: lo que
+ * cuenta es si está subido a GitHub y responde. Un 404 se ve igual que una
+ * imagen ausente al imprimir, y por eso hay que preguntarle al servidor.
+ */
+function cargaLaImagen(url) {
+  return new Promise(function (listo) {
+    var img = new Image();
+    img.onload  = function () { listo(true); };
+    img.onerror = function () { listo(false); };
+    img.src = url + '?v=' + new Date().getTime();   // sin caché
+  });
+}
+
+async function diagnosticoImagenes() {
+  var caja = document.getElementById('cajaImagenes');
+  if (!caja) return;
+
+  var mapa = estado.emisores || {};
+  var urls = {};
+  for (var k in mapa) {
+    if (mapa.hasOwnProperty(k) && mapa[k].logo_url) urls[mapa[k].logo_url] = true;
+  }
+  if (!Object.keys(urls).length) urls['logo-futura.png'] = true;
+
+  caja.innerHTML = '<div class="sub">Probando los logos…</div>';
+  var lineas = [];
+
+  for (var url in urls) {
+    if (!urls.hasOwnProperty(url)) continue;
+    var ok = await cargaLaImagen(url);
+    lineas.push('<div style="margin-bottom:5px">' +
+      (ok ? '<span style="color:var(--verde)">✓</span> '
+          : '<span style="color:var(--rojo)">✗</span> ') +
+      escapar(url) + (ok ? '' : ' — <b>no está subido a GitHub</b>') + '</div>');
+  }
+
+  caja.innerHTML =
+    '<div style="font-size:.75rem;font-family:monospace;background:var(--panel);' +
+    'border:1px solid var(--gris-linea);border-radius:8px;padding:12px;margin-top:10px">' +
+    '<b style="color:var(--cian);font-family:inherit">Logos</b><br><br>' +
+    lineas.join('') + '</div>';
+}
+
 function diagnostico() {
   var filas = [];
   var problemas = [];
@@ -2179,6 +2249,30 @@ function diagnostico() {
                    'no funciona así: hay que abrirla por https, desde GitHub Pages.');
   }
 
+  // --- ¿Qué versión del script está publicada? ---
+  var buildEsperado = 'fase2-build-4';
+  var buildServidor = estado.build || '';
+
+  if (estado.usuario) {
+    if (!buildServidor) {
+      problemas.push('El script publicado es más viejo que esta página: ni siquiera ' +
+                     'reporta su versión. Falta implementar una versión nueva del Web App.');
+    } else if (buildServidor !== buildEsperado) {
+      problemas.push('La página espera el script "' + buildEsperado + '" pero el publicado ' +
+                     'es "' + buildServidor + '". Pegue el Codigo.gs nuevo e implemente ' +
+                     'una versión nueva.');
+    }
+
+    var cuantos = Object.keys(estado.emisores || {}).length;
+    if (!cuantos) {
+      problemas.push('No llegó la tabla de emisores. Por eso la boleta sale sin razón ' +
+                     'social, sin cédula y sin logo. Es el script publicado, no la página.');
+    }
+    filas.push(['Emisores recibidos', cuantos + (cuantos ? '' : '  ← este es el problema')]);
+    filas.push(['Versión del script publicado', buildServidor || '(no la reporta)']);
+    filas.push(['Versión que espera esta página', buildEsperado]);
+  }
+
   filas.push(['CLIENT_ID', cid || '(vacío)']);
   filas.push(['Largo del CLIENT_ID', cid.length + ' caracteres']);
   filas.push(['URL del Web App', api || '(vacío)']);
@@ -2208,7 +2302,35 @@ function diagnostico() {
     '<b>' + escapar(location.origin) + '</b> — sin barra al final y sin ninguna ruta después.' +
     '</div>';
 
-  document.getElementById('cajaDiagnostico').innerHTML = html;
+  document.getElementById('cajaDiagnostico').innerHTML = html +
+    '<div id="cajaImagenes"></div>';
+  diagnosticoImagenes();
+}
+
+/**
+ * El mismo diagnóstico, pero estando ya adentro de la aplicación: ahí es
+ * donde se nota que falta la tabla de emisores, porque solo se ve al imprimir.
+ */
+function diagnosticoDentro() {
+  var previo = document.getElementById('cajaDiagnostico');
+  if (!previo) return;
+  diagnostico();
+  var caja = document.getElementById('resultados') || document.body;
+  irA('Buscar');
+  caja.innerHTML = '<div class="acciones" style="margin-bottom:12px">' +
+    '<button class="btn secundario pequeno" onclick="limpiarBusqueda()">Cerrar</button>' +
+    '</div>' + previo.innerHTML;
+  diagnosticoImagenesEn(caja);
+}
+
+function diagnosticoImagenesEn(caja) {
+  var destino = caja.querySelector('#cajaImagenes');
+  if (!destino) {
+    destino = document.createElement('div');
+    destino.id = 'cajaImagenes';
+    caja.appendChild(destino);
+  }
+  diagnosticoImagenes();
 }
 
 /* ==========================================================================
