@@ -13,7 +13,7 @@
  * Eso obliga a todos los equipos a descargar el archivo nuevo.
  ******************************************************************************/
 
-var VERSION = 'garantias-v15';
+var VERSION = 'garantias-v16';
 
 var CASCARON = [
   './',
@@ -55,10 +55,24 @@ self.addEventListener('fetch', function (evento) {
   if (url.origin !== self.location.origin) return;
   if (url.pathname.indexOf('/exec') !== -1) return;
 
-  // Red primero, caché de respaldo: así siempre se ve la versión más nueva
-  // cuando hay internet, y sigue abriendo cuando no lo hay.
+  /* Red primero, caché de respaldo: así siempre se ve la versión más nueva
+     cuando hay internet, y sigue abriendo cuando no lo hay.
+
+     Con `cache: 'no-store'` en el HTML y el código, a propósito.
+     GitHub Pages manda los archivos con permiso de guardarlos 10 minutos, así
+     que el navegador seguía entregando el index.html viejo aunque el nuevo ya
+     estuviera subido — y la aplicación quedaba a medias entre dos versiones.
+     Las imágenes sí se dejan cachear: pesan y casi nunca cambian. */
+  var esCodigo = /\.(html|js|json)$/i.test(url.pathname) ||
+                 url.pathname.endsWith('/') ||
+                 peticion.mode === 'navigate';
+
+  var alaRed = esCodigo
+    ? fetch(new Request(peticion.url, { cache: 'no-store' }))
+    : fetch(peticion);
+
   evento.respondWith(
-    fetch(peticion)
+    alaRed
       .then(function (respuesta) {
         var copia = respuesta.clone();
         caches.open(VERSION).then(function (cache) {
