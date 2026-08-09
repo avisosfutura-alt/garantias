@@ -1622,7 +1622,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase3-build-4';
+var BUILD_ESPERADO = 'fase3-build-5';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -2088,6 +2088,19 @@ function notaResolucion(l) {
       '</div>');
   }
 
+  if (l.referencia_nc) {
+    bloques.push(
+      '<div style="margin-top:8px"><b>Nota de crédito emitida:</b> ' +
+      escapar(l.referencia_nc) +
+      (l.nc_por ? ' · ' + escapar(l.nc_por) : '') +
+      (l.fecha_nc ? ' · ' + escapar(soloFecha(l.fecha_nc)) : '') +
+      (l.nc_a_nombre_de
+        ? '<div class="sub" style="margin-top:2px">A nombre de ' +
+          escapar(l.nc_a_nombre_de) + '</div>'
+        : '') +
+      '</div>');
+  }
+
   if (!bloques.length) return '';
   return '<div class="nota-unidad">' + bloques.join('') + '</div>';
 }
@@ -2109,6 +2122,13 @@ function opcionesTipoMovimiento(escogido) {
  * pantalla no puede ser otra cosa; se manda igual para que la columna quede
  * llena y el inventario cuadre después.
  */
+/**
+ * Nota de crédito: la digita quien la emite en SiReTT.
+ *
+ * Registrarla NO cierra la unidad. Emitir la nota le devuelve la plata al
+ * cliente; el artículo sigue en bodega. Al guardar, la unidad pasa a
+ * Pendientes de salida para que bodega diga qué se hizo con el físico.
+ */
 function tarjetaNC(p) {
   var l = p.linea;
 
@@ -2116,22 +2136,29 @@ function tarjetaNC(p) {
     '<div class="unidad" data-linea="' + escapar(l.id_linea) + '">' +
       cabeceraUnidad(p) +
       notaResolucion(l) +
-      '<input type="hidden" data-campo="tipo_movimiento" value="Nota de credito">' +
       '<div class="rejilla dos">' +
         '<div class="campo"><label>Referencia de la nota de crédito <span class="req">*</span>' +
           '<span class="ayuda">El número con el que quedó en SiReTT</span></label>' +
-          '<input data-campo="referencia_ejecucion" autocomplete="off"></div>' +
+          '<input data-campo="referencia_nc" autocomplete="off"></div>' +
         '<div class="campo"><label>A nombre de quién se emitió' +
           '<span class="ayuda">Opcional. Útil cuando no coincide con el cliente de la boleta</span></label>' +
-          '<input data-campo="retirado_por" autocomplete="off" value="' +
+          '<input data-campo="nc_a_nombre_de" autocomplete="off" value="' +
             escapar(p.boleta.cliente_nombre || '') + '"></div>' +
       '</div>' +
+      '<div class="aviso info" style="margin-top:12px;text-align:left">' +
+        'Al guardar, esta unidad pasa a <b>Pendientes de salida</b>. La boleta ' +
+        'cierra cuando bodega diga qué se hizo con el artículo físico.' +
+      '</div>' +
       '<div class="acciones" style="margin-top:12px">' +
-        '<button class="btn primario pequeno" onclick="guardarEjecucion(this,\'nc\')">' +
+        '<button class="btn primario pequeno" onclick="guardarNC(this)">' +
           'Registrar nota de crédito</button>' +
         '<span class="sub" data-aviso></span>' +
       '</div>' +
     '</div>';
+}
+
+function guardarNC(boton) {
+  guardarUnidad(boton, 'registrarNC', 'nc', 'Nota de crédito registrada');
 }
 
 /**
@@ -2199,8 +2226,7 @@ function tarjetaSalida(p) {
 }
 
 function guardarEjecucion(boton, cola) {
-  guardarUnidad(boton, 'ejecutar', cola,
-                cola === 'nc' ? 'Nota de crédito registrada' : 'Salida registrada');
+  guardarUnidad(boton, 'ejecutar', cola, 'Salida registrada');
 }
 
 /**
@@ -2595,10 +2621,16 @@ function tarjetaResultado(b, lineas, conBotonImprimir) {
   }
 
   if (conBotonImprimir) {
+    /* Los dos papeles de la boleta, uno al lado del otro: el de entrada y el
+       de salida. Es donde alguien los busca cuando el cliente ya está en el
+       mostrador y no sabe en qué pantalla vive esa boleta. */
     html += '<div class="acciones no-imprimir" style="margin-top:14px">' +
       '<button class="btn secundario pequeno" ' +
       'onclick="imprimirDesdeBusqueda(\'' + escapar(b.id_garantia) + '\')">' +
-      'Imprimir boleta</button></div>';
+      'Imprimir boleta</button>' +
+      '<button class="btn secundario pequeno" ' +
+      'onclick="imprimirReporteTaller(\'' + escapar(b.id_garantia) + '\')">' +
+      'Reporte de taller</button></div>';
   }
 
   html += '</div>';
@@ -2850,6 +2882,7 @@ function construirReporteTaller(b, lineas) {
 
   var filas = (lineas || []).map(function (l, i) {
     var salida = [];
+    if (l.referencia_nc)        salida.push('NC ' + escapar(l.referencia_nc));
     if (l.tipo_movimiento)      salida.push(escapar(l.tipo_movimiento));
     if (l.referencia_ejecucion) salida.push('Ref. ' + escapar(l.referencia_ejecucion));
     if (l.fecha_ejecucion)      salida.push(escapar(soloFecha(l.fecha_ejecucion)));
