@@ -1001,6 +1001,7 @@ async function alRecibirCredencial(respuesta) {
   estado.empresa  = r.empresa || {};
   estado.emisores = r.emisores || {};
   estado.build    = r.build || '';
+  estado.columnasFaltantes = r.columnas_faltantes || [];
   revisarVersiones();
   estado.emisorPorDefecto = r.emisor_por_defecto || '';
   estado.listas   = r.listas  || {};
@@ -1622,14 +1623,18 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase3-build-5';
+var BUILD_ESPERADO = 'fase3-build-6';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
   if (!caja) return;
 
   var servidor = estado.build || '';
-  if (servidor === BUILD_ESPERADO) { caja.style.display = 'none'; return; }
+
+  if (servidor === BUILD_ESPERADO) {
+    // Las versiones calzan. Falta revisar la tercera pieza: la hoja.
+    return revisarHoja(caja);
+  }
 
   var quePasa = servidor
     ? 'Esta página es la <b>' + escapar(BUILD_ESPERADO) + '</b> y el script publicado ' +
@@ -2046,6 +2051,31 @@ function tarjetaResolucion(p) {
           'Guardar resolución</button>' +
         '<span class="sub" data-aviso></span>' +
       '</div>' +
+    '</div>';
+}
+
+/**
+ * La hoja es la tercera pieza, y la que más fácil se queda atrás: pegar el
+ * Codigo.gs e implementar no le agrega las columnas nuevas. Eso hay que
+ * pedirlo con configurarHojas().
+ *
+ * Sin este aviso, la falta de una columna se manifiesta como un guardado que
+ * dice que sí y no cambia nada.
+ */
+function revisarHoja(caja) {
+  var faltan = estado.columnasFaltantes || [];
+  if (!faltan.length) { caja.style.display = 'none'; return; }
+
+  caja.style.display = 'block';
+  caja.innerHTML =
+    '<div style="background:#4a3a12;border-bottom:2px solid var(--oro);' +
+    'padding:12px 16px;font-size:.85rem;color:#ffeab8">' +
+      '<b style="display:block;margin-bottom:3px">⚠ A la hoja le faltan columnas</b>' +
+      'El código está al día, pero la hoja de cálculo todavía no. Faltan: <b>' +
+      escapar(faltan.join(', ')) + '</b>.<br>' +
+      '<span style="opacity:.85">Abra el Apps Script y ejecute <b>configurarHojas()</b>. ' +
+      'Las agrega al final sin descolocar ningún dato. Mientras tanto, ' +
+      '<b>algunas cosas se guardan a medias.</b></span>' +
     '</div>';
 }
 
