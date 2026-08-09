@@ -614,6 +614,19 @@ table.lineas tr:last-child td{border-bottom:0}
               </label>
               <div class="caja-origen" id="cajaOrigenDetalle"></div>
             </div>
+            <div class="campo ancho">
+              <label for="emisor">
+                A nombre de <span class="req">*</span>
+                <span class="ayuda" id="ayudaEmisor">
+                  La empresa que firma esta boleta. Es la que sale impresa con su
+                  cédula y su logo.
+                </span>
+              </label>
+              <select id="emisor" name="emisor" onchange="marcarEmisorEscogidoAMano()">
+                <option value="">— Seleccione —</option>
+              </select>
+              <div id="notaEmisor" class="sub" style="margin-top:4px"></div>
+            </div>
           </div>
         </div>
 
@@ -844,6 +857,8 @@ var estado = {
   emisorPorDefecto: '',
   colas: {},
   boletaAbierta: {},
+  emisorAMano: false,
+  emisorSugerido: '',
   build: '',
   listas: {},
   ultimaBoleta: null,
@@ -1076,6 +1091,7 @@ function prepararFormulario() {
   });
 
   document.getElementById('fecha_recepcion').value = hoyISO();
+  refrescarEmisor();
   refrescarOrigenDetalle();
 
   if (!recuperarBorrador()) {
@@ -1181,6 +1197,11 @@ function refrescarExigenciaBoleta() {
  * y mantener una lista al día sería una tarea más que nadie va a hacer.
  */
 function refrescarOrigenDetalle(valorPrevio) {
+  // Cambiar el origen vuelve a poner la empresa en automático. Cambiar de
+  // sucursal es una señal fuerte de que la boleta es de otra empresa, y sería
+  // peor arrastrar una elección hecha para el origen anterior.
+  if (!valorPrevio) estado.emisorAMano = false;
+
   var tipo = document.getElementById('origen_tipo').value;
   var caja = document.getElementById('cajaOrigenDetalle');
   var ayuda = document.getElementById('ayudaOrigen');
@@ -1210,6 +1231,84 @@ function refrescarOrigenDetalle(valorPrevio) {
   }
 
   if (valorPrevio) document.getElementById('origen_detalle').value = valorPrevio;
+
+  // El control se acaba de rehacer: hay que volver a engancharle el aviso
+  // para que al cambiar de sucursal se actualice la empresa.
+  var ctrl = document.getElementById('origen_detalle');
+  if (ctrl) ctrl.addEventListener('change', refrescarEmisor);
+
+  refrescarEmisor();
+}
+
+/* --------------------------------------------------------------------------
+   A NOMBRE DE CUÁL EMPRESA SALE LA BOLETA
+
+   No todas las sucursales son la misma empresa, y **un mensajero recoge de
+   varias en el mismo viaje**: del origen no siempre se puede deducir. Cuando
+   viene de una sucursal se llena solo; cuando viene por mensajero o el cliente
+   la trae, hay que escogerla.
+
+   Va siempre a la vista, incluso cuando se llena solo, para que quien recibe
+   vea a nombre de quién va a salir la boleta ANTES de guardarla.
+   -------------------------------------------------------------------------- */
+function marcarEmisorEscogidoAMano() {
+  estado.emisorAMano = true;
+  refrescarNotaEmisor();
+  guardarBorrador();
+}
+
+function refrescarEmisor() {
+  var sel = document.getElementById('emisor');
+  if (!sel) return;
+
+  // Se llena la lista una sola vez, con las empresas que mandó el servidor.
+  if (sel.options.length <= 1) {
+    var html = '<option value="">— Seleccione —</option>';
+    var mapa = estado.emisores || {};
+    for (var k in mapa) {
+      if (!mapa.hasOwnProperty(k)) continue;
+      html += '<option value="' + escapar(k) + '">' +
+              escapar(mapa[k].razon_social || k) + '</option>';
+    }
+    sel.innerHTML = html;
+  }
+
+  var tipo = document.getElementById('origen_tipo').value;
+  var det  = (document.getElementById('origen_detalle') || {}).value || '';
+  var sugerido = (tipo === 'Sucursal' && (estado.emisores || {})[det]) ? det : '';
+
+  /* La sucursal manda mientras nadie lo haya cambiado a mano.
+   *
+   * Ojo con el caso que se veía mal: venía de "Sucursal → Barrio México" y se
+   * cambiaba a "Mensajero". Si aquí no se limpia, la empresa se queda pegada
+   * con la de la sucursal anterior y la boleta sale firmada por quien no es.
+   * Por eso se asigna siempre, aunque `sugerido` esté vacío. */
+  if (!estado.emisorAMano) sel.value = sugerido;
+
+  estado.emisorSugerido = sugerido;
+  refrescarNotaEmisor();
+}
+
+function refrescarNotaEmisor() {
+  var sel = document.getElementById('emisor');
+  var nota = document.getElementById('notaEmisor');
+  if (!sel || !nota) return;
+
+  var em = (estado.emisores || {})[sel.value];
+
+  if (!sel.value) {
+    nota.innerHTML = '<span style="color:var(--oro)">' +
+      'Un mensajero puede traer artículos de varias empresas: escoja a nombre ' +
+      'de cuál sale esta boleta.</span>';
+    return;
+  }
+
+  nota.innerHTML =
+    (estado.emisorSugerido === sel.value
+      ? '<span style="color:var(--verde)">Puesto automáticamente por la sucursal.</span> '
+      : '') +
+    escapar((em.rotulo_cedula || 'Cédula') + ' ' + (em.cedula || '')) +
+    (em.logo_url ? ' · logo ' + escapar(em.logo_url) : '');
 }
 
 function agregarUnidad(copiaDe) {
@@ -1305,7 +1404,7 @@ function renumerarUnidades() {
 function leerFormulario() {
   var datos = { tipo_boleta: estado.tipoBoleta || 'Garantia de cliente' };
 
-  ['num_boleta_manual','fecha_recepcion','origen_tipo','origen_detalle',
+  ['num_boleta_manual','fecha_recepcion','origen_tipo','origen_detalle','emisor',
    'cliente_nombre','cliente_identificacion','cliente_telefono','cliente_correo',
    'factura_referencia','fecha_compra','id_garantia_relacionada','observaciones']
     .forEach(function (id) {
@@ -1386,6 +1485,7 @@ function limpiarFormulario(confirmar) {
   document.getElementById('unidades').innerHTML = '';
   document.getElementById('fecha_recepcion').value = hoyISO();
   escogerTipo('Garantia de cliente');
+  estado.emisorAMano = false;
   refrescarOrigenDetalle();
   agregarUnidad();
   localStorage.removeItem(LLAVE_BORRADOR);
@@ -1443,6 +1543,11 @@ function recuperarBorrador() {
   // El control de origen se reconstruye y de una vez recupera su valor: puede
   // ser un combo o una caja de texto según el origen que se había escogido.
   refrescarOrigenDetalle(datos.origen_detalle);
+  if (datos.emisor) {
+    document.getElementById('emisor').value = datos.emisor;
+    estado.emisorAMano = (datos.emisor !== estado.emisorSugerido);
+    refrescarNotaEmisor();
+  }
 
   document.getElementById('unidades').innerHTML = '';
   (datos.articulos || []).forEach(function (a) {
@@ -1477,7 +1582,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase2-build-5';
+var BUILD_ESPERADO = 'fase2-build-6';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -2080,6 +2185,8 @@ function tarjetaResultado(b, lineas, conBotonImprimir) {
           (b.origen_detalle ? ' (' + escapar(b.origen_detalle) + ')' : '') + '</div>' +
         '<div class="dato"><span class="etiqueta">Recibido por</span>' +
           escapar(b.recibido_por_nombre || b.recibido_por || '—') + '</div>' +
+        '<div class="dato"><span class="etiqueta">A nombre de</span>' +
+          escapar((emisorDe(b) || {}).razon_social || '—') + '</div>' +
         (b.dias_en_taller !== undefined && b.dias_en_taller !== null
           ? '<div class="dato"><span class="etiqueta">Tiempo</span>' +
             '<span class="dias ' + claseDias(b.semaforo) + '">' +
@@ -2145,6 +2252,15 @@ async function imprimirDesdeBusqueda(idGarantia) {
 function emisorDe(b) {
   var mapa = estado.emisores || {};
 
+  /* Manda lo que se GUARDÓ en la boleta. Es lo correcto para un documento con
+     cédula jurídica: si mañana una sucursal cambia de sociedad, una boleta
+     vieja reimpresa tiene que seguir diciendo lo mismo que la copia que el
+     cliente tiene en la mano. Deducirlo al imprimir la reescribiría sola. */
+  if (b && b.emisor && mapa[String(b.emisor).trim()]) {
+    return mapa[String(b.emisor).trim()];
+  }
+
+  // Boletas viejas, registradas antes de que existiera el campo.
   if (b && String(b.origen_tipo || '').trim() === 'Sucursal') {
     var suc = String(b.origen_detalle || '').trim();
     if (mapa[suc]) return mapa[suc];
