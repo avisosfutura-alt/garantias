@@ -616,10 +616,10 @@ table.lineas tr:last-child td{border-bottom:0}
             </div>
             <div class="campo ancho">
               <label for="emisor">
-                A nombre de <span class="req">*</span>
+                Sucursal que la respalda <span class="req">*</span>
                 <span class="ayuda" id="ayudaEmisor">
-                  La empresa que firma esta boleta. Es la que sale impresa con su
-                  cédula y su logo.
+                  De aquí sale la empresa que firma la boleta, con su cédula y su
+                  logo. Varias sucursales pueden ser la misma empresa.
                 </span>
               </label>
               <select id="emisor" name="emisor" onchange="marcarEmisorEscogidoAMano()">
@@ -1261,21 +1261,26 @@ function refrescarEmisor() {
   var sel = document.getElementById('emisor');
   if (!sel) return;
 
-  // Se llena la lista una sola vez, con las empresas que mandó el servidor.
+  /* Se llena la lista una sola vez.
+   *
+   * Cada opción dice la SUCURSAL primero y la razón social después. Antes
+   * mostraba solo la razón social, y como tres sucursales pertenecen a la
+   * misma persona, salían tres opciones que decían exactamente lo mismo y no
+   * había forma de saber cuál escoger. */
   if (sel.options.length <= 1) {
     var html = '<option value="">— Seleccione —</option>';
     var mapa = estado.emisores || {};
     for (var k in mapa) {
       if (!mapa.hasOwnProperty(k)) continue;
       html += '<option value="' + escapar(k) + '">' +
-              escapar(mapa[k].razon_social || k) + '</option>';
+              escapar(k) + '  —  ' + escapar(mapa[k].razon_social || '') + '</option>';
     }
     sel.innerHTML = html;
   }
 
   var tipo = document.getElementById('origen_tipo').value;
   var det  = (document.getElementById('origen_detalle') || {}).value || '';
-  var sugerido = (tipo === 'Sucursal' && (estado.emisores || {})[det]) ? det : '';
+  var sugerido = (tipo === 'Sucursal') ? normalizarEmisor(det) : '';
 
   /* La sucursal manda mientras nadie lo haya cambiado a mano.
    *
@@ -1298,8 +1303,8 @@ function refrescarNotaEmisor() {
 
   if (!sel.value) {
     nota.innerHTML = '<span style="color:var(--oro)">' +
-      'Un mensajero puede traer artículos de varias empresas: escoja a nombre ' +
-      'de cuál sale esta boleta.</span>';
+      'Un mensajero puede traer artículos de varias sucursales: escoja de cuál ' +
+      'es este.</span>';
     return;
   }
 
@@ -1582,7 +1587,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase2-build-6';
+var BUILD_ESPERADO = 'fase2-build-7';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -2249,6 +2254,23 @@ async function imprimirDesdeBusqueda(idGarantia) {
  * Solo la sucursal decide. Si vino por mensajero o el cliente la trajo al
  * mostrador, no hay sucursal que identificar y manda el emisor por defecto.
  */
+/* Nombres de sucursal que se usaron antes y siguen guardados en boletas ya
+   registradas. Sin esto, una boleta vieja de "Barrio México" no encontraría
+   su empresa y se imprimiría con la de por defecto: firmada por quien no es. */
+var ALIAS_EMISORES = {
+  'Barrio México': 'Barrio México (tienda)',
+  'Barrio Mexico': 'Barrio México (tienda)'
+};
+
+function normalizarEmisor(nombre) {
+  var mapa = estado.emisores || {};
+  var n = String(nombre || '').trim();
+  if (!n) return '';
+  if (mapa[n]) return n;
+  if (ALIAS_EMISORES[n] && mapa[ALIAS_EMISORES[n]]) return ALIAS_EMISORES[n];
+  return '';
+}
+
 function emisorDe(b) {
   var mapa = estado.emisores || {};
 
@@ -2256,14 +2278,13 @@ function emisorDe(b) {
      cédula jurídica: si mañana una sucursal cambia de sociedad, una boleta
      vieja reimpresa tiene que seguir diciendo lo mismo que la copia que el
      cliente tiene en la mano. Deducirlo al imprimir la reescribiría sola. */
-  if (b && b.emisor && mapa[String(b.emisor).trim()]) {
-    return mapa[String(b.emisor).trim()];
-  }
+  var guardado = normalizarEmisor(b && b.emisor);
+  if (guardado) return mapa[guardado];
 
   // Boletas viejas, registradas antes de que existiera el campo.
   if (b && String(b.origen_tipo || '').trim() === 'Sucursal') {
-    var suc = String(b.origen_detalle || '').trim();
-    if (mapa[suc]) return mapa[suc];
+    var suc = normalizarEmisor(b.origen_detalle);
+    if (suc) return mapa[suc];
   }
 
   var porDefecto = mapa[estado.emisorPorDefecto];
