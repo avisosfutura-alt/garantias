@@ -767,6 +767,33 @@ table.lineas tr:last-child td{border-bottom:0}
     </section>
 
     <!-- ---------------------------------------------------------------
+         NOTAS DE CRÉDITO — cola de facturación
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaNC">
+      <h1>Notas de crédito</h1>
+      <p class="subtitulo">
+        Unidades que se resolvieron como nota de crédito y están esperando que
+        se emita en SiReTT. Al digitar aquí la referencia, la unidad sale de
+        esta lista y la boleta avanza.
+      </p>
+      <div id="colaNC"></div>
+    </section>
+
+    <!-- ---------------------------------------------------------------
+         PENDIENTES DE SALIDA — lo que ya se resolvió pero sigue en bodega
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaSalida">
+      <h1>Pendientes de salida</h1>
+      <p class="subtitulo">
+        Todo lo que ya tiene resolución y todavía está físicamente en bodega.
+        Son dos cosas distintas y por eso van en dos pestañas: lo que está
+        listo y nadie ha llamado, y lo que ya se avisó y el cliente no viene
+        a recoger.
+      </p>
+      <div id="colaSalida"></div>
+    </section>
+
+    <!-- ---------------------------------------------------------------
          BUSCAR
          --------------------------------------------------------------- -->
     <section class="pantalla" id="pantallaBuscar">
@@ -1036,6 +1063,12 @@ function armarMenu() {
   if (estado.permisos.resolver) {
     opciones.push({ id:'Resoluciones', rotulo:'Resoluciones' });
   }
+  if (estado.permisos.digitarNC) {
+    opciones.push({ id:'NC', rotulo:'Notas de crédito' });
+  }
+  if (estado.permisos.ejecutarOtras) {
+    opciones.push({ id:'Salida', rotulo:'Pendientes de salida' });
+  }
   if (estado.permisos.consultar) {
     opciones.push({ id:'Buscar', rotulo:'Buscar' });
   }
@@ -1055,7 +1088,7 @@ function armarMenu() {
 }
 
 function irA(id) {
-  ['Recibir', 'Taller', 'Resoluciones', 'Buscar', 'Guardada'].forEach(function (p) {
+  ['Recibir', 'Taller', 'Resoluciones', 'NC', 'Salida', 'Buscar', 'Guardada'].forEach(function (p) {
     var el = document.getElementById('pantalla' + p);
     if (el) el.classList.toggle('visible', p === id);
   });
@@ -1068,6 +1101,8 @@ function irA(id) {
   // sobre la misma lista y lo que uno despacha desaparece para el otro.
   if (id === 'Taller')       cargarCola('diagnostico');
   if (id === 'Resoluciones') cargarCola('resolucion');
+  if (id === 'NC')           cargarCola('nc');
+  if (id === 'Salida')       cargarCola('salida');
 }
 
 /* ==========================================================================
@@ -1587,7 +1622,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase2-build-7';
+var BUILD_ESPERADO = 'fase3-build-1';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -1614,8 +1649,89 @@ function revisarVersiones() {
     '</div>';
 }
 
+/* --------------------------------------------------------------------------
+   PENDIENTES DE SALIDA — las dos pestañas
+
+   No son un capricho de diseño: separan dos situaciones que no son culpa de
+   la misma persona. "Por avisar" es trabajo nuestro que está sin hacer.
+   "Avisado" es el cliente que no ha venido. Mezcladas en una sola lista, la
+   segunda hace ver la primera más grande de lo que es, y nadie sabe a quién
+   apurar.
+   -------------------------------------------------------------------------- */
+var pestanaSalida = 'por_avisar';
+
+function lineaEnPestana(l) {
+  return (pestanaSalida === 'avisado') ? !!l.avisado : !l.avisado;
+}
+
+/** Las unidades de un grupo que corresponden a la vista actual. */
+function lineasVisibles(cola, g) {
+  if (cola !== 'salida') return g.pendientes;
+  return g.pendientes.filter(lineaEnPestana);
+}
+
+function grupoVisible(cola, g) {
+  return lineasVisibles(cola, g).length > 0;
+}
+
+function contarSalida(r, avisado) {
+  var total = 0;
+  (r.boletas || []).forEach(function (g) {
+    g.pendientes.forEach(function (l) { if (!!l.avisado === avisado) total++; });
+  });
+  return total;
+}
+
+function pestanasSalida(cola, r) {
+  if (cola !== 'salida') return '';
+
+  var porAvisar = contarSalida(r, false);
+  var avisados  = contarSalida(r, true);
+
+  function boton(clave, rotulo, cuenta, ayuda) {
+    var activa = (pestanaSalida === clave);
+    return '<button class="btn ' + (activa ? 'primario' : 'secundario') + ' pequeno" ' +
+           'title="' + escapar(ayuda) + '" ' +
+           'onclick="cambiarPestanaSalida(\'' + clave + '\')">' +
+           escapar(rotulo) + ' · ' + cuenta + '</button>';
+  }
+
+  return '<div class="acciones" style="margin:0 0 14px">' +
+    boton('por_avisar', 'Por avisar', porAvisar,
+          'Listos, y todavía nadie ha llamado al cliente') +
+    boton('avisado', 'Avisado, esperando al cliente', avisados,
+          'Ya se avisó y el cliente no ha venido a recoger') +
+    '</div>';
+}
+
+function cambiarPestanaSalida(clave) {
+  pestanaSalida = clave;
+  cargarCola('salida');
+}
+
+var VACIO_DE_COLA = {
+  diagnostico: 'No hay nada pendiente de diagnóstico. El taller está al día.',
+  resolucion:  'No hay nada esperando resolución.',
+  nc:          'No hay notas de crédito pendientes de emitir.',
+  salida:      'No hay nada esperando salir de bodega.'
+};
+
+var ROTULO_PENDIENTES = {
+  diagnostico: 'Por diagnosticar',
+  resolucion:  'Por resolver',
+  nc:          'Por emitir',
+  salida:      'Por salir'
+};
+
+var CAJA_DE_COLA = {
+  diagnostico: 'colaTaller',
+  resolucion:  'colaResoluciones',
+  nc:          'colaNC',
+  salida:      'colaSalida'
+};
+
 function cajaDeCola(cola) {
-  return document.getElementById(cola === 'diagnostico' ? 'colaTaller' : 'colaResoluciones');
+  return document.getElementById(CAJA_DE_COLA[cola] || 'colaTaller');
 }
 
 /**
@@ -1660,15 +1776,18 @@ async function cargarCola(cola, abrir) {
 
   if (!r.total_boletas) {
     caja.innerHTML = '<div class="vacio"><span class="icono">✅</span>' +
-      (cola === 'diagnostico'
-        ? 'No hay nada pendiente de diagnóstico. El taller está al día.'
-        : 'No hay nada esperando resolución.') + '</div>';
+      VACIO_DE_COLA[cola] + '</div>';
     return;
   }
 
   // Si la boleta que se estaba trabajando todavía tiene pendientes, se vuelve
   // a abrir sola. Si ya no, cae de vuelta en la lista.
-  if (abrir && buscarGrupo(cola, abrir)) { abrirBoletaCola(cola, abrir); return; }
+  /* Se vuelve a entrar a la boleta solo si TODAVIA tiene algo que hacer en la
+     vista actual. Al avisarle al cliente de la ultima unidad, esa unidad se
+     pasa a la otra pestaña: quedarse dentro de la boleta mostraria una ficha
+     vacía, como si no hubiera nada — cuando lo que pasó es que se movió. */
+  var grupoAbrir = abrir ? buscarGrupo(cola, abrir) : null;
+  if (grupoAbrir && grupoVisible(cola, grupoAbrir)) { abrirBoletaCola(cola, abrir); return; }
 
   var atrasadas = r.boletas.filter(function (g) {
     return g.boleta.semaforo === 'atrasado';
@@ -1682,10 +1801,14 @@ async function cargarCola(cola, abrir) {
       ? atrasadas + (atrasadas === 1 ? ' lleva' : ' llevan') + ' más de 30 días en taller.'
       : 'Ordenadas de la más vieja a la más nueva.') + '</div>';
 
-  var filas = r.boletas.map(function (g) {
+  html += pestanasSalida(cola, r);
+
+  var visibles = r.boletas.filter(function (g) { return grupoVisible(cola, g); });
+
+  var filas = visibles.map(function (g) {
     var b = g.boleta;
     var esInterna = (b.tipo_boleta === 'Revision interna');
-    var n = g.pendientes.length;
+    var n = lineasVisibles(cola, g).length;
 
     return '<tr onclick="abrirBoletaCola(\'' + cola + '\',\'' +
              escapar(b.id_garantia) + '\')">' +
@@ -1703,7 +1826,7 @@ async function cargarCola(cola, abrir) {
           (esInterna ? 'Mercadería de la empresa' : escapar(b.cliente_nombre || '—')) + '</div>' +
         '<div class="sub">' + escapar(soloFecha(b.fecha_recepcion)) +
           (b.origen_detalle ? ' · ' + escapar(b.origen_detalle) : '') + '</div></td>' +
-      '<td data-rotulo="Por trabajar"><b style="color:var(--cian)">' + n +
+      '<td data-rotulo="' + ROTULO_PENDIENTES[cola] + '"><b style="color:var(--cian)">' + n +
         (n === 1 ? ' unidad' : ' unidades') + '</b></td>' +
       '<td data-rotulo="En taller"><span class="dias ' + claseDias(b.semaforo) + '">' +
         textoDias(b.dias_en_taller) + '</span></td>' +
@@ -1712,10 +1835,20 @@ async function cargarCola(cola, abrir) {
       '</tr>';
   }).join('');
 
+  if (!visibles.length) {
+    caja.innerHTML = html +
+      '<div class="vacio"><span class="icono">✅</span>' +
+      (pestanaSalida === 'avisado'
+        ? 'No hay nadie esperando venir a recoger.'
+        : 'Todo lo que está listo ya tiene aviso dado al cliente.') +
+      '</div>';
+    return;
+  }
+
   caja.innerHTML = html +
     '<div class="envoltura-tabla"><table class="tabla-boletas"><thead><tr>' +
       '<th class="col-punto"></th><th>Boleta</th><th>Tipo</th><th>Cliente</th>' +
-      '<th>Por trabajar</th><th>En taller</th><th>Sin movimiento</th>' +
+      '<th>' + ROTULO_PENDIENTES[cola] + '</th><th>En taller</th><th>Sin movimiento</th>' +
     '</tr></thead><tbody>' + filas + '</tbody></table></div>' +
     '<p class="subtitulo" style="margin-top:12px;font-size:.8rem">' +
       'Toque una boleta para ver sus unidades.</p>';
@@ -1737,12 +1870,20 @@ function abrirBoletaCola(cola, idGarantia) {
 
   var b = g.boleta;
   var esInterna = (b.tipo_boleta === 'Revision interna');
-  var n = g.pendientes.length;
+  var pendientes = lineasVisibles(cola, g);
+  var n = pendientes.length;
 
   var html =
     '<div class="acciones" style="margin-bottom:14px">' +
       '<button class="btn secundario pequeno" onclick="cargarCola(\'' + cola + '\')">' +
         '‹ Volver a la lista</button>' +
+      /* El reporte de taller es lo que se le entrega al cliente cuando viene
+         a recoger, así que el botón vive donde se despacha, no en el buscador. */
+      ((cola === 'nc' || cola === 'salida')
+        ? '<button class="btn secundario pequeno" ' +
+          'onclick="imprimirReporteTaller(\'' + escapar(b.id_garantia) + '\')">' +
+          'Reporte de taller</button>'
+        : '') +
     '</div>' +
     '<div class="tarjeta">' +
       '<div class="resultado-cabecera" style="border:0;margin:0;padding:0">' +
@@ -1761,12 +1902,16 @@ function abrirBoletaCola(cola, idGarantia) {
           escapar(b.estado_boleta) + '</span></div>' +
       '</div>' +
     '</div>' +
-    '<p class="subtitulo">' + n + (n === 1 ? ' unidad por trabajar' : ' unidades por trabajar') +
-      ' en esta boleta. Cada una se resuelve por separado.</p>';
+    '<p class="subtitulo">' + n + (n === 1 ? ' unidad' : ' unidades') + ' ' +
+      ROTULO_PENDIENTES[cola].toLowerCase() +
+      ' en esta boleta. Cada una se despacha por separado.</p>';
 
-  g.pendientes.forEach(function (linea) {
+  pendientes.forEach(function (linea) {
     var p = { linea: linea, boleta: b };
-    html += (cola === 'diagnostico') ? tarjetaDiagnostico(p) : tarjetaResolucion(p);
+    if (cola === 'diagnostico')     html += tarjetaDiagnostico(p);
+    else if (cola === 'resolucion') html += tarjetaResolucion(p);
+    else if (cola === 'nc')         html += tarjetaNC(p);
+    else                            html += tarjetaSalida(p);
   });
 
   estado.boletaAbierta[cola] = idGarantia;
@@ -1871,6 +2016,174 @@ function tarjetaResolucion(p) {
         '<span class="sub" data-aviso></span>' +
       '</div>' +
     '</div>';
+}
+
+/* --------------------------------------------------------------------------
+   FASE 3 — las dos tarjetas de cierre
+   -------------------------------------------------------------------------- */
+
+/** Lo que decidió el administrador, en una línea, para no repetir la ficha. */
+function notaResolucion(l) {
+  return '<div class="nota-unidad">' +
+    '<b>Resolución:</b> ' + escapar(l.resolucion) +
+    (l.resuelto_por ? ' · ' + escapar(l.resuelto_por) : '') +
+    (l.diagnostico ? '<br><b>Diagnóstico:</b> ' + escapar(l.diagnostico) : '') +
+    (l.detalle_tecnico ? ' · ' + escapar(l.detalle_tecnico) : '') +
+    (l.notas_linea ? '<br>' + escapar(l.notas_linea) : '') +
+  '</div>';
+}
+
+function opcionesTipoMovimiento(escogido) {
+  return '<option value="">— Seleccione —</option>' +
+    (estado.listas.tipo_movimiento || []).map(function (t) {
+      return '<option value="' + escapar(t.valor) + '"' +
+             (t.valor === escogido ? ' selected' : '') + '>' +
+             escapar(t.valor) + (t.exige_referencia ? ' (lleva referencia)' : '') +
+             '</option>';
+    }).join('');
+}
+
+/**
+ * Nota de crédito: la digita quien la emite en SiReTT.
+ *
+ * El tipo de movimiento viene fijo en "Nota de credito" porque en esta
+ * pantalla no puede ser otra cosa; se manda igual para que la columna quede
+ * llena y el inventario cuadre después.
+ */
+function tarjetaNC(p) {
+  var l = p.linea;
+
+  return '' +
+    '<div class="unidad" data-linea="' + escapar(l.id_linea) + '">' +
+      cabeceraUnidad(p) +
+      notaResolucion(l) +
+      '<input type="hidden" data-campo="tipo_movimiento" value="Nota de credito">' +
+      '<div class="rejilla dos">' +
+        '<div class="campo"><label>Referencia de la nota de crédito <span class="req">*</span>' +
+          '<span class="ayuda">El número con el que quedó en SiReTT</span></label>' +
+          '<input data-campo="referencia_ejecucion" autocomplete="off"></div>' +
+        '<div class="campo"><label>A nombre de quién se emitió' +
+          '<span class="ayuda">Opcional. Útil cuando no coincide con el cliente de la boleta</span></label>' +
+          '<input data-campo="retirado_por" autocomplete="off" value="' +
+            escapar(p.boleta.cliente_nombre || '') + '"></div>' +
+      '</div>' +
+      '<div class="acciones" style="margin-top:12px">' +
+        '<button class="btn primario pequeno" onclick="guardarEjecucion(this,\'nc\')">' +
+          'Registrar nota de crédito</button>' +
+        '<span class="sub" data-aviso></span>' +
+      '</div>' +
+    '</div>';
+}
+
+/**
+ * Salida física. Es la acción que cierra la boleta.
+ *
+ * Lleva tres cosas encima del formulario de salida:
+ *   - el botón de avisar al cliente, porque avisar y entregar son dos momentos
+ *   - cuántos días lleva avisado, que es lo que delata al que no viene
+ *   - el botón de abandono, habilitado solo cuando el plazo se cumplió
+ */
+function tarjetaSalida(p) {
+  var l = p.linea;
+  var id = l.id_linea;
+
+  var estadoAviso = l.avisado
+    ? '<div class="nota-unidad" style="border-left-color:var(--oro)">' +
+        '<b>Avisado al cliente</b> · ' + escapar(soloFecha(l.fecha_aviso_cliente)) +
+        (l.avisado_por ? ' por ' + escapar(l.avisado_por) : '') +
+        ' · hace ' + textoDias(l.dias_desde_aviso) +
+        (l.puede_abandonar
+          ? '<br>Pasó el plazo: se puede dar por abandonado.'
+          : '') +
+      '</div>'
+    : '<div class="nota-unidad" style="border-left-color:var(--coral)">' +
+        '<b>Todavía no se le ha avisado al cliente</b> que su artículo está listo.' +
+      '</div>';
+
+  var botonesAviso =
+    '<div class="acciones no-imprimir" style="margin:0 0 14px">' +
+      '<button class="btn secundario pequeno" onclick="avisarCliente(this)">' +
+        (l.avisado ? 'Volver a avisar' : 'Registrar aviso al cliente') + '</button>' +
+      (l.puede_abandonar
+        ? '<button class="btn secundario pequeno" onclick="marcarAbandonado(this)">' +
+          'Dar por abandonado</button>'
+        : '') +
+      '<span class="sub" data-aviso-llamada></span>' +
+    '</div>';
+
+  return '' +
+    '<div class="unidad" data-linea="' + escapar(id) + '">' +
+      cabeceraUnidad(p) +
+      notaResolucion(l) +
+      estadoAviso +
+      botonesAviso +
+      '<div class="rejilla dos">' +
+        '<div class="campo"><label>¿Cómo sale? <span class="req">*</span>' +
+          '<span class="ayuda">Es el puente con el inventario: sin esto no cuadra después</span></label>' +
+          '<select data-campo="tipo_movimiento">' + opcionesTipoMovimiento(l.tipo_movimiento) +
+          '</select></div>' +
+        '<div class="campo"><label>Referencia del movimiento' +
+          '<span class="ayuda">Número del ajuste, traslado o documento. Obligatorio si mueve inventario</span></label>' +
+          '<input data-campo="referencia_ejecucion" autocomplete="off" value="' +
+            escapar(l.referencia_ejecucion || '') + '"></div>' +
+        '<div class="campo ancho"><label>¿Quién retira?' +
+          '<span class="ayuda">Obligatorio cuando el artículo se le entrega a alguien</span></label>' +
+          '<input data-campo="retirado_por" autocomplete="off" value="' +
+            escapar(l.retirado_por || '') + '"></div>' +
+      '</div>' +
+      '<div class="acciones" style="margin-top:12px">' +
+        '<button class="btn primario pequeno" onclick="guardarEjecucion(this,\'salida\')">' +
+          'Marcar como salida</button>' +
+        '<span class="sub" data-aviso></span>' +
+      '</div>' +
+    '</div>';
+}
+
+function guardarEjecucion(boton, cola) {
+  guardarUnidad(boton, 'ejecutar', cola,
+                cola === 'nc' ? 'Nota de crédito registrada' : 'Salida registrada');
+}
+
+/**
+ * Avisar y dar por abandonado no usan guardarUnidad() a propósito: no sacan
+ * la unidad de la cola, solo la cambian de pestaña. Desvanecerla haría creer
+ * que ya salió de bodega, que es justo lo contrario de lo que pasó.
+ */
+async function accionSobreUnidad(boton, accion, datos, rotuloOk) {
+  var caja = boton.closest('.unidad');
+  var aviso = caja.querySelector('[data-aviso-llamada]');
+  var previo = boton.textContent;
+
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+  aviso.textContent = '';
+  aviso.style.color = '';
+
+  datos.id_linea = caja.dataset.linea;
+  var r = await api(accion, datos);
+
+  if (!r.ok) {
+    boton.disabled = false;
+    boton.textContent = previo;
+    aviso.style.color = 'var(--rojo)';
+    aviso.textContent = (r.errores || [r.detalle || r.error]).join(' ');
+    return;
+  }
+
+  aviso.style.color = 'var(--verde)';
+  aviso.textContent = rotuloOk;
+  var idBoleta = estado.boletaAbierta['salida'] || '';
+  setTimeout(function () { cargarCola('salida', idBoleta); }, 900);
+}
+
+function avisarCliente(boton) {
+  accionSobreUnidad(boton, 'avisarCliente', {}, 'Aviso registrado');
+}
+
+function marcarAbandonado(boton) {
+  accionSobreUnidad(boton, 'resolver',
+                    { resolucion: 'Abandonado por el cliente' },
+                    'Marcado como abandonado');
 }
 
 function leerUnidad(boton) {
@@ -2458,6 +2771,107 @@ function esperarImagenes(contenedor) {
       setTimeout(listo, 3000);
     });
   }));
+}
+
+/* --------------------------------------------------------------------------
+   REPORTE DE TALLER
+
+   Es el papel que se le entrega al cliente cuando viene a recoger: qué traía,
+   qué se encontró, qué se hizo y con qué referencia salió. Mismo membrete que
+   la boleta de recepción, y la misma empresa: sale de la columna `emisor`
+   guardada en la boleta, no de lo que la sucursal sea hoy.
+   -------------------------------------------------------------------------- */
+function construirReporteTaller(b, lineas) {
+  var em = emisorDe(b);
+  var esInterna = (b.tipo_boleta === 'Revision interna');
+
+  var contacto = [];
+  if (em.telefono) contacto.push('Tel. ' + em.telefono);
+  if (em.correo)   contacto.push(em.correo);
+
+  var filas = (lineas || []).map(function (l, i) {
+    var salida = [];
+    if (l.tipo_movimiento)      salida.push(escapar(l.tipo_movimiento));
+    if (l.referencia_ejecucion) salida.push('Ref. ' + escapar(l.referencia_ejecucion));
+    if (l.fecha_ejecucion)      salida.push(escapar(soloFecha(l.fecha_ejecucion)));
+    if (l.retirado_por)         salida.push('Retira: ' + escapar(l.retirado_por));
+
+    return '<tr>' +
+      '<td style="text-align:center">' + (i + 1) + '</td>' +
+      '<td>' + escapar(l.descripcion) +
+        (l.marca ? '<br><i>' + escapar(l.marca) + '</i>' : '') +
+        (l.serie_lote ? '<br>Serie ' + escapar(l.serie_lote) : '') + '</td>' +
+      '<td>' + escapar(l.dano_reportado || '—') + '</td>' +
+      '<td>' + escapar(l.diagnostico || 'Pendiente') +
+        (l.detalle_tecnico ? '<br>' + escapar(l.detalle_tecnico) : '') + '</td>' +
+      '<td>' + escapar(l.resolucion || 'Pendiente') + '</td>' +
+      '<td>' + (salida.length ? salida.join('<br>') : 'Todavía en bodega') + '</td>' +
+    '</tr>';
+  }).join('');
+
+  document.getElementById('areaImpresion').innerHTML =
+    '<div class="doc">' +
+      '<div class="enc">' +
+        '<div class="empresa">' +
+          (em.logo_url ? '<img src="' + escapar(em.logo_url) + '" alt="">' : '') +
+          '<div class="datos-emp">' +
+            '<div class="rs">' + escapar(em.razon_social || '') + '</div>' +
+            (em.cedula
+              ? escapar(em.rotulo_cedula || 'Cédula') + ' ' + escapar(em.cedula) + '<br>'
+              : '') +
+            escapar(em.direccion || '') +
+            (contacto.length ? '<br>' + escapar(contacto.join(' · ')) : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="doc-id">' +
+          '<div class="tipo">Reporte de taller</div>' +
+          '<div class="gar">' + escapar(b.id_garantia) + '</div>' +
+          (b.num_boleta_manual ? 'Boleta física ' + escapar(b.num_boleta_manual) : '') +
+        '</div>' +
+      '</div>' +
+
+      '<div class="bloque"><h3>' + (esInterna ? 'Mercadería' : 'Cliente') + '</h3>' +
+        '<div class="par">' +
+          (esInterna
+            ? '<div><span>Origen:</span> mercadería de la empresa, sin vender</div>'
+            : '<div><span>Nombre:</span> ' + escapar(b.cliente_nombre || '—') + '</div>' +
+              (b.cliente_identificacion
+                ? '<div><span>Identificación:</span> ' + escapar(b.cliente_identificacion) + '</div>'
+                : '') +
+              (b.cliente_telefono
+                ? '<div><span>Teléfono:</span> ' + escapar(b.cliente_telefono) + '</div>'
+                : '')) +
+          '<div><span>Recibido:</span> ' + escapar(soloFecha(b.fecha_recepcion)) + '</div>' +
+          (b.fecha_cierre
+            ? '<div><span>Cerrada:</span> ' + escapar(soloFecha(b.fecha_cierre)) + '</div>'
+            : '<div><span>Estado:</span> ' + escapar(b.estado_boleta || '') + '</div>') +
+        '</div>' +
+      '</div>' +
+
+      '<div class="bloque"><h3>Qué se hizo</h3>' +
+        '<table><thead><tr>' +
+          '<th style="width:26px">#</th><th>Artículo</th><th>Daño reportado</th>' +
+          '<th>Diagnóstico</th><th>Resolución</th><th>Salida</th>' +
+        '</tr></thead><tbody>' + filas + '</tbody></table>' +
+      '</div>' +
+
+      '<div class="firmas">' +
+        '<div><div class="linea"></div>Entrega</div>' +
+        '<div><div class="linea"></div>Recibe conforme</div>' +
+      '</div>' +
+
+      '<div class="pie">' +
+        escapar(b.id_garantia) + ' · reporte generado el ' +
+        escapar(soloFecha(new Date().toISOString())) +
+      '</div>' +
+    '</div>';
+}
+
+async function imprimirReporteTaller(idGarantia) {
+  var r = await api('obtener', { id_garantia: idGarantia });
+  if (!r.ok) { alert('No se pudo cargar la boleta.'); return; }
+  construirReporteTaller(r.boleta, r.articulos);
+  await imprimirArea();
 }
 
 async function imprimirArea() {
