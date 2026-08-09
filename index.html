@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#232c7c">
+<meta name="theme-color" content="#171d33">
 <title>Garantías — Futura Latinoamérica</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -26,37 +26,51 @@
    acento que marca lo activo, y el cian señala las líneas de artículo. El
    rojo queda reservado para errores, que es donde ya lo espera el ojo.
    -------------------------------------------------------------------------- */
+/* Sobre fondo oscuro los colores de marca hay que subirlos de brillo: el azul
+   marino y el morado originales serían casi invisibles contra el fondo. Estos
+   son los mismos tonos, aclarados hasta que se leen bien. */
 :root{
-  --azul:#232c7c;         /* Futura: azul marino */
-  --azul-claro:#39449b;
-  --azul-suave:#eef0fa;
-  --morado:#4a2b52;       /* Multitiendas */
-  --cian:#00aecb;         /* Multitiendas */
-  --cian-suave:#e4f7fb;
-  --oro:#c9a227;          /* Tres & Tres */
-  --oro-texto:#8a6d1b;    /* el dorado no se lee sobre blanco; para texto va este */
-  --oro-suave:#fbf3de;
-  --coral:#e8794a;        /* Multitiendas */
+  --azul:#5a6ee0;         /* Futura, aclarado para fondo oscuro */
+  --azul-hondo:#232c7c;   /* el original, para encabezados e impresión */
+  --azul-claro:#7d8dee;
+  --azul-suave:#232a4a;   /* "suave" aquí significa fondo tenue, no claro */
+  --morado:#8b5aa0;       /* Multitiendas */
+  --morado-hondo:#4a2b52;
+  --cian:#22c7e0;         /* Multitiendas */
+  --cian-suave:#0d3742;
+  --oro:#e0b93f;          /* Tres & Tres */
+  --oro-texto:#e0b93f;
+  --oro-suave:#3a3016;
+  --coral:#f08a5d;        /* Multitiendas */
+  --coral-suave:#3d2418;
 
-  --gris:#5a6472;
-  --gris-linea:#dde2ea;
-  --fondo:#f5f6fb;
-  --blanco:#fff;
-  --verde:#1b7a4b;
-  --verde-suave:#e6f4ec;
-  --rojo:#d32027;         /* Futura: rojo */
-  --rojo-suave:#fdecea;
-  --ambar:#8a6100;
-  --ambar-suave:#fff5e0;
+  /* Superficies: tres niveles para que las tarjetas se despeguen del fondo */
+  --fondo:#0f1424;
+  --panel:#171d33;
+  --panel-alto:#1e2542;
+  --campo:#121829;
+
+  --texto:#e8ecf7;
+  --gris:#98a2c0;         /* texto secundario */
+  --gris-linea:#2a3354;   /* bordes */
+  --blanco:#171d33;       /* lo que antes era blanco ahora es el panel */
+
+  --verde:#35c98a;
+  --verde-suave:#0e3327;
+  --rojo:#f0555c;         /* Futura, aclarado */
+  --rojo-suave:#3a1a1d;
+  --ambar:#e0b93f;
+  --ambar-suave:#3a3016;
+
   --radio:10px;
-  --sombra:0 1px 3px rgba(16,24,40,.08), 0 1px 2px rgba(16,24,40,.06);
+  --sombra:0 1px 3px rgba(0,0,0,.4), 0 1px 2px rgba(0,0,0,.3);
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   background:var(--fondo);
-  color:#1a1f2b;
+  color:var(--texto);
   font-size:16px;
   line-height:1.5;
   -webkit-text-size-adjust:100%;
@@ -67,7 +81,7 @@ button,input,select,textarea{font-family:inherit;font-size:16px}
    Encabezado y navegación
    ========================================================================== */
 header{
-  background:linear-gradient(100deg,var(--azul) 0%,var(--azul) 45%,var(--morado) 100%);
+  background:linear-gradient(100deg,var(--azul-hondo) 0%,#2d2a63 55%,var(--morado-hondo) 100%);
   color:#fff;
   padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
   position:sticky;top:0;z-index:50;
@@ -87,10 +101,10 @@ header{
   background:none;border:0;color:#fff;opacity:.75;cursor:pointer;
   font-size:.78rem;padding:0;text-decoration:underline;
 }
-nav{background:var(--azul-claro);position:sticky;top:0;z-index:49}
+nav{background:var(--panel-alto);position:sticky;top:0;z-index:49;border-bottom:1px solid var(--gris-linea)}
 nav .interior{display:flex;max-width:1100px;margin:0 auto;overflow-x:auto;-webkit-overflow-scrolling:touch}
 nav button{
-  background:none;border:0;color:rgba(255,255,255,.78);
+  background:none;border:0;color:var(--gris);
   padding:13px 18px;cursor:pointer;white-space:nowrap;
   border-bottom:3px solid transparent;font-size:.9rem;font-weight:500;
 }
@@ -106,12 +120,12 @@ h1{font-size:1.35rem;margin:0 0 4px}
 .subtitulo{color:var(--gris);font-size:.9rem;margin:0 0 20px}
 
 .tarjeta{
-  background:var(--blanco);border:1px solid var(--gris-linea);
+  background:var(--panel);border:1px solid var(--gris-linea);
   border-radius:var(--radio);padding:18px;margin-bottom:16px;box-shadow:var(--sombra);
 }
 .tarjeta > h2{
   font-size:.78rem;text-transform:uppercase;letter-spacing:.9px;
-  color:var(--azul);margin:0 0 14px;font-weight:700;
+  color:var(--cian);margin:0 0 14px;font-weight:700;
 }
 
 /* ==========================================================================
@@ -124,7 +138,7 @@ h1{font-size:1.35rem;margin:0 0 4px}
 }
 .campo{display:flex;flex-direction:column;gap:5px;min-width:0}
 .campo.ancho{grid-column:1/-1}
-label{font-size:.8rem;font-weight:600;color:#33415c}
+label{font-size:.8rem;font-weight:600;color:#c3cbe4}
 label .req{color:var(--rojo)}
 label .ayuda{display:block;font-weight:400;color:var(--gris);font-size:.72rem;margin-top:1px}
 
@@ -150,15 +164,18 @@ label .ayuda{display:block;font-weight:400;color:var(--gris);font-size:.72rem;ma
 .campo > textarea,
 .campo > .caja-origen{margin-top:auto}
 input,select,textarea{
-  width:100%;padding:11px 12px;border:1px solid #c6cedb;border-radius:8px;
-  background:#fff;color:inherit;
+  width:100%;padding:11px 12px;border:1px solid var(--gris-linea);border-radius:8px;
+  background:var(--campo);color:var(--texto);
 }
+input::placeholder,textarea::placeholder{color:#69739a}
+/* el calendario nativo viene en negro sobre negro si no se invierte */
+input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.7)}
 input:focus,select:focus,textarea:focus{
-  outline:0;border-color:var(--azul-claro);box-shadow:0 0 0 3px rgba(45,79,138,.15);
+  outline:0;border-color:var(--azul);box-shadow:0 0 0 3px rgba(90,110,224,.28);
 }
-input:disabled,select:disabled{background:#f2f4f8;color:var(--gris)}
+input:disabled,select:disabled{background:#0d1120;color:#5c668c}
 textarea{min-height:74px;resize:vertical}
-.campo.error input,.campo.error textarea,.campo.error select{border-color:var(--rojo);background:#fffafa}
+.campo.error input,.campo.error textarea,.campo.error select{border-color:var(--rojo);background:#2a1416}
 
 /* ==========================================================================
    Botones
@@ -170,14 +187,14 @@ textarea{min-height:74px;resize:vertical}
 }
 .btn:disabled{opacity:.5;cursor:not-allowed}
 .btn.primario{background:var(--azul);color:#fff}
-.btn.primario:hover:not(:disabled){background:#182b4d}
-.btn.secundario{background:#fff;color:var(--azul);border-color:#c6cedb}
-.btn.secundario:hover:not(:disabled){background:var(--azul-suave)}
-.btn.peligro{background:#fff;color:var(--rojo);border-color:#e8b4b0}
+.btn.primario:hover:not(:disabled){background:var(--azul-claro)}
+.btn.secundario{background:transparent;color:var(--azul-claro);border-color:var(--gris-linea)}
+.btn.secundario:hover:not(:disabled){background:var(--azul-suave);border-color:var(--azul)}
+.btn.peligro{background:transparent;color:var(--rojo);border-color:#5a2a2e}
 .btn.pequeno{padding:8px 13px;font-size:.83rem}
 .acciones{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
 .barra-guardar{
-  position:sticky;bottom:0;background:rgba(244,246,250,.95);
+  position:sticky;bottom:0;background:rgba(15,20,36,.94);
   backdrop-filter:blur(6px);padding:14px 0 calc(env(safe-area-inset-bottom) + 14px);
   border-top:1px solid var(--gris-linea);margin-top:8px;
 }
@@ -187,26 +204,26 @@ textarea{min-height:74px;resize:vertical}
    ========================================================================== */
 .unidad{
   border:1px solid var(--gris-linea);border-left:4px solid var(--cian);
-  border-radius:var(--radio);padding:16px;margin-bottom:14px;background:#fdfdff;
+  border-radius:var(--radio);padding:16px;margin-bottom:14px;background:var(--panel-alto);
 }
 .unidad-cabecera{
   display:flex;align-items:center;justify-content:space-between;
   gap:10px;margin-bottom:14px;
 }
-.unidad-titulo{font-weight:700;color:var(--azul);font-size:.9rem}
+.unidad-titulo{font-weight:700;color:var(--cian);font-size:.9rem}
 .nota-unidad{
   background:var(--azul-suave);border-radius:8px;padding:11px 14px;
-  font-size:.82rem;color:#33415c;margin-bottom:16px;
+  font-size:.82rem;color:#c3cbe4;margin-bottom:16px;border:1px solid var(--gris-linea);
 }
 
 /* ==========================================================================
    Avisos
    ========================================================================== */
 .aviso{border-radius:8px;padding:13px 15px;margin-bottom:16px;font-size:.88rem}
-.aviso.error{background:var(--rojo-suave);color:#7a1a15;border:1px solid #f2c3bf}
-.aviso.exito{background:var(--verde-suave);color:#0f5132;border:1px solid #b7dfc8}
-.aviso.info{background:var(--azul-suave);color:#243b63;border:1px solid #c9d6ec}
-.aviso.alerta{background:var(--ambar-suave);color:#6b4c00;border:1px solid #f0dba8}
+.aviso.error{background:var(--rojo-suave);color:#ffb3b7;border:1px solid #6b2b30}
+.aviso.exito{background:var(--verde-suave);color:#7ee8b8;border:1px solid #1d5c45}
+.aviso.info{background:var(--azul-suave);color:#bcc6ea;border:1px solid #38427a}
+.aviso.alerta{background:var(--ambar-suave);color:#f0d789;border:1px solid #6b5a20}
 .aviso ul{margin:8px 0 0;padding-left:20px}
 .aviso b{display:block;margin-bottom:2px}
 
@@ -214,26 +231,103 @@ textarea{min-height:74px;resize:vertical}
    Resultados de búsqueda
    ========================================================================== */
 .resultado{
-  background:#fff;border:1px solid var(--gris-linea);border-radius:var(--radio);
+  background:var(--panel);border:1px solid var(--gris-linea);border-radius:var(--radio);
   padding:16px;margin-bottom:14px;box-shadow:var(--sombra);
 }
 .resultado-cabecera{
   display:flex;flex-wrap:wrap;gap:8px 16px;align-items:baseline;
   padding-bottom:12px;margin-bottom:12px;border-bottom:1px solid var(--gris-linea);
 }
-.gar{font-weight:700;color:var(--azul);font-size:1.05rem;font-variant-numeric:tabular-nums}
+.gar{font-weight:700;color:var(--cian);font-size:1.05rem;font-variant-numeric:tabular-nums}
 .etiqueta{
   font-size:.68rem;text-transform:uppercase;letter-spacing:.7px;
   color:var(--gris);display:block;font-weight:600;
 }
 .dato{margin-bottom:9px;font-size:.9rem}
+/* --------------------------------------------------------------------------
+   ESTADOS — un color por etapa, siempre el mismo en toda la aplicación
+
+   Van en orden de avance, y el color acompaña ese avance: entra en cian,
+   pasa por morado y oro mientras se trabaja, coral cuando ya está decidido
+   pero sigue en bodega, y verde solo cuando salió. Verde = ya no está aquí.
+   -------------------------------------------------------------------------- */
 .estado{
-  display:inline-block;padding:3px 11px;border-radius:999px;
-  font-size:.74rem;font-weight:700;
+  display:inline-flex;align-items:center;gap:6px;
+  padding:3px 11px 3px 8px;border-radius:999px;
+  font-size:.74rem;font-weight:700;white-space:nowrap;
 }
-.estado.nuevo{background:var(--azul-suave);color:var(--azul)}
-.estado.proceso{background:var(--ambar-suave);color:var(--ambar)}
-.estado.cerrada{background:var(--verde-suave);color:var(--verde)}
+.estado::before{
+  content:'';width:8px;height:8px;border-radius:50%;
+  background:currentColor;flex:none;
+}
+.estado.e-nuevo   {background:var(--cian-suave);  color:var(--cian)}
+.estado.e-revision{background:#2e2140;            color:#c79ada}
+.estado.e-revisada{background:var(--oro-suave);   color:var(--oro)}
+.estado.e-resuelta{background:var(--coral-suave); color:var(--coral)}
+.estado.e-cerrada {background:var(--verde-suave); color:var(--verde)}
+
+/* Punto suelto, para la primera columna de la tabla */
+.punto{
+  display:inline-block;width:11px;height:11px;border-radius:50%;flex:none;
+  box-shadow:0 0 0 3px rgba(255,255,255,.06);
+}
+.punto.e-nuevo   {background:var(--cian)}
+.punto.e-revision{background:#c79ada}
+.punto.e-revisada{background:var(--oro)}
+.punto.e-resuelta{background:var(--coral)}
+.punto.e-cerrada {background:var(--verde)}
+
+/* --------------------------------------------------------------------------
+   TABLA DE RESULTADOS
+
+   En pantalla ancha es una tabla de verdad, para poder recorrer muchas
+   boletas con la vista. En celular cada fila se convierte en una tarjeta,
+   porque una tabla de 7 columnas en un teléfono no se lee.
+   -------------------------------------------------------------------------- */
+.tabla-boletas{width:100%;border-collapse:collapse;font-size:.85rem}
+.tabla-boletas thead th{
+  text-align:left;padding:10px 12px;background:var(--panel-alto);
+  color:var(--cian);font-size:.7rem;text-transform:uppercase;letter-spacing:.6px;
+  border-bottom:1px solid var(--gris-linea);white-space:nowrap;
+}
+.tabla-boletas tbody tr{
+  border-bottom:1px solid var(--gris-linea);cursor:pointer;
+}
+.tabla-boletas tbody tr:hover{background:var(--panel-alto)}
+.tabla-boletas td{padding:11px 12px;vertical-align:middle}
+.tabla-boletas .col-punto{width:26px;padding-right:0}
+.tabla-boletas .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+.tabla-boletas .id-sistema{font-weight:700;color:var(--cian)}
+.tabla-boletas .id-fisico{color:var(--gris);font-size:.78rem}
+.tabla-boletas .cliente{font-weight:600}
+.tabla-boletas .sub{color:var(--gris);font-size:.76rem}
+
+/* Los días: el color avisa sin que haya que leer el número */
+.dias{font-variant-numeric:tabular-nums;font-weight:700;white-space:nowrap}
+.dias.ok{color:var(--gris)}
+.dias.atencion{color:var(--oro)}
+.dias.atrasado{color:var(--rojo)}
+
+.envoltura-tabla{
+  background:var(--panel);border:1px solid var(--gris-linea);
+  border-radius:var(--radio);overflow:hidden;box-shadow:var(--sombra);
+}
+
+@media(max-width:820px){
+  .tabla-boletas thead{display:none}
+  .tabla-boletas,.tabla-boletas tbody,.tabla-boletas tr,.tabla-boletas td{display:block}
+  .tabla-boletas tbody tr{
+    border:1px solid var(--gris-linea);border-radius:var(--radio);
+    margin:0 0 10px;padding:12px;background:var(--panel);
+  }
+  .tabla-boletas td{padding:3px 0;display:flex;gap:10px;align-items:baseline}
+  .tabla-boletas td::before{
+    content:attr(data-rotulo);color:var(--gris);font-size:.72rem;
+    text-transform:uppercase;letter-spacing:.5px;min-width:100px;flex:none;
+  }
+  .tabla-boletas td.col-punto{display:none}
+  .envoltura-tabla{background:none;border:0;box-shadow:none;overflow:visible}
+}
 
 /* Distintivo del tipo de boleta. La revisión interna se marca en dorado para
    que salte a la vista que esa no es de ningún cliente. */
@@ -241,19 +335,19 @@ textarea{min-height:74px;resize:vertical}
   display:inline-block;padding:3px 11px;border-radius:999px;
   font-size:.74rem;font-weight:700;
 }
-.tipo.cliente{background:var(--cian-suave);color:#046b7d}
+.tipo.cliente{background:var(--cian-suave);color:var(--cian)}
 .tipo.interna{background:var(--oro-suave);color:var(--oro-texto)}
 
 /* Selector grande de tipo de boleta, arriba del formulario */
 .selector-tipo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .selector-tipo label{
   border:2px solid var(--gris-linea);border-radius:var(--radio);
-  padding:14px;cursor:pointer;background:#fff;min-height:0;
+  padding:14px;cursor:pointer;background:var(--panel-alto);min-height:0;
   display:flex;flex-direction:column;gap:3px;
 }
 .selector-tipo label:hover{border-color:var(--azul-claro)}
 .selector-tipo input{position:absolute;opacity:0;width:0;height:0}
-.selector-tipo .titulo{font-size:.95rem;font-weight:700;color:var(--azul)}
+.selector-tipo .titulo{font-size:.95rem;font-weight:700;color:var(--azul-claro)}
 .selector-tipo .desc{font-size:.75rem;font-weight:400;color:var(--gris);line-height:1.35}
 .selector-tipo label.escogido{border-color:var(--azul);background:var(--azul-suave)}
 .selector-tipo label.escogido.interna{border-color:var(--oro);background:var(--oro-suave)}
@@ -268,24 +362,38 @@ textarea{min-height:74px;resize:vertical}
 table.lineas{width:100%;border-collapse:collapse;font-size:.85rem;min-width:520px}
 table.lineas th{
   text-align:left;padding:8px 10px;background:var(--azul-suave);
-  color:var(--azul);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;
+  color:var(--cian);font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;
   border-bottom:1px solid var(--gris-linea);white-space:nowrap;
 }
-table.lineas td{padding:9px 10px;border-bottom:1px solid #eef1f6;vertical-align:top}
+table.lineas td{padding:9px 10px;border-bottom:1px solid var(--gris-linea);vertical-align:top}
 table.lineas tr:last-child td{border-bottom:0}
 
 /* ==========================================================================
    Ingreso
    ========================================================================== */
 .ingreso{
-  max-width:420px;margin:8vh auto;background:#fff;padding:34px 28px;
-  border-radius:14px;text-align:center;box-shadow:0 4px 20px rgba(16,24,40,.1);
+  max-width:420px;margin:8vh auto;background:var(--panel);padding:34px 28px;
+  border-radius:14px;text-align:center;box-shadow:0 8px 40px rgba(0,0,0,.5);
   border:1px solid var(--gris-linea);
 }
-.ingreso .escudo{
-  width:60px;height:60px;border-radius:14px;background:var(--azul);
-  color:#fff;display:flex;align-items:center;justify-content:center;
-  font-size:1.6rem;font-weight:700;margin:0 auto 18px;
+.ingreso .escudo{width:76px;height:76px;margin:0 auto 18px;display:block}
+
+/* El escudo de la barra es hermano de .marca, no hijo: si el selector lo
+   busca dentro de .marca no aplica, el SVG se queda sin medidas y se estira
+   hasta ocupar el encabezado entero. */
+.escudo-chico{width:30px;height:30px;flex:none;display:block}
+.marca-caja{display:flex;align-items:center;gap:10px;flex:1;min-width:0}
+
+/* En celular el nombre del usuario y el rol se comen el ancho y el título
+   termina partido en tres renglones encima del chip. Se recorta lo accesorio:
+   el rol se ve en la pantalla de ingreso y no hace falta repetirlo aquí. */
+@media(max-width:560px){
+  .marca{font-size:.9rem;line-height:1.25}
+  .marca small{display:none}
+  .escudo-chico{width:26px;height:26px}
+  .chip-usuario{font-size:.72rem;padding:5px 10px;gap:6px}
+  #rolUsuario{display:none}
+  #nombreUsuario{max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 }
 .ingreso h1{font-size:1.2rem;margin-bottom:6px}
 .ingreso p{color:var(--gris);font-size:.88rem;margin:0 0 24px}
@@ -310,9 +418,12 @@ table.lineas tr:last-child td{border-bottom:0}
   header,nav,.barra-guardar,.no-imprimir,main{display:none !important}
   #areaImpresion{display:block !important}
   body{background:#fff;font-size:11pt}
-  /* Todo en negro: los colores de pantalla salen lavados en blanco y negro
-     y gastan tóner de color sin necesidad en una impresora a color. */
-  #areaImpresion, #areaImpresion *{color:#000 !important}
+  /* La aplicación es oscura, el papel no. Al imprimir se fuerza fondo blanco
+     y tinta negra: si no, saldría una plancha oscura que se come el tóner y
+     encima se lee peor. */
+  #areaImpresion{background:#fff !important}
+  #areaImpresion, #areaImpresion *{color:#000 !important;background-color:transparent}
+  #areaImpresion table th{background:#e8e8e8 !important}
   #areaImpresion .pie{color:#444 !important}
 }
 
@@ -364,7 +475,32 @@ table.lineas tr:last-child td{border-bottom:0}
      ========================================================================= -->
 <div id="pantallaIngreso" class="pantalla visible">
   <div class="ingreso">
-    <div class="escudo">FL</div>
+    <!-- Escudo con visto bueno: protección y aprobación, que es exactamente
+         de lo que trata una garantía. Va en SVG para que se vea nítido en
+         cualquier pantalla y para poder reusarlo en la barra de arriba. -->
+    <svg class="escudo" viewBox="0 0 100 100" role="img" aria-label="Gestión de Garantías">
+      <defs>
+        <linearGradient id="gEscudo" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%"   stop-color="#e8c85a"/>
+          <stop offset="55%"  stop-color="#c9a227"/>
+          <stop offset="100%" stop-color="#9c7a15"/>
+        </linearGradient>
+        <linearGradient id="gFondo" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stop-color="#2b3570"/>
+          <stop offset="100%" stop-color="#4a2b52"/>
+        </linearGradient>
+      </defs>
+      <rect x="2" y="2" width="96" height="96" rx="22" fill="url(#gFondo)"/>
+      <rect x="2" y="2" width="96" height="96" rx="22" fill="none"
+            stroke="#c9a227" stroke-opacity=".35" stroke-width="1.5"/>
+      <path d="M50 17 L78 27 V50 C78 66 66 77 50 84 C34 77 22 66 22 50 V27 Z"
+            fill="url(#gEscudo)"/>
+      <path d="M50 24 L71 31.5 V50 C71 62.5 62 71.5 50 77.5
+               C38 71.5 29 62.5 29 50 V31.5 Z"
+            fill="#1b2245" fill-opacity=".92"/>
+      <path d="M38 51 L46.5 60 L63 41" fill="none" stroke="#e8c85a"
+            stroke-width="7.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
     <h1>Gestión de Garantías</h1>
     <p>Bodega y taller · Futura Latinoamérica</p>
     <div id="contenedorBotonGoogle"></div>
@@ -385,9 +521,19 @@ table.lineas tr:last-child td{border-bottom:0}
 
   <header>
     <div class="barra">
-      <div class="marca">
-        Gestión de Garantías
-        <small id="rotuloEmpresa">Futura Latinoamérica</small>
+      <div class="marca-caja">
+        <svg class="escudo-chico" viewBox="0 0 100 100" aria-hidden="true">
+          <path d="M50 6 L88 20 V52 C88 74 71 88 50 97 C29 88 12 74 12 52 V20 Z"
+                fill="#c9a227"/>
+          <path d="M50 15 L80 26 V52 C80 69 67 81 50 88.5
+                   C33 81 20 69 20 52 V26 Z" fill="#1b2245"/>
+          <path d="M35 52 L45.5 63 L66 40" fill="none" stroke="#e8c85a"
+                stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <div class="marca">
+          Gestión de Garantías
+          <small id="rotuloEmpresa">Futura Latinoamérica</small>
+        </div>
       </div>
       <div class="chip-usuario">
         <b id="nombreUsuario">—</b>
@@ -655,6 +801,7 @@ var estado = {
   empresa: {},
   listas: {},
   ultimaBoleta: null,
+  listaPrevia: null,
   tipoBoleta: 'Garantia de cliente',
   contadorUnidades: 0
 };
@@ -1298,10 +1445,7 @@ async function buscar() {
            'En total hay ' + r.total_real + '. Afine la búsqueda para verlas todas.</div>' + html;
   }
 
-  r.resultados.forEach(function (item) {
-    html += tarjetaResultado(item.boleta, item.articulos, true);
-  });
-  caja.innerHTML = html;
+  caja.innerHTML = html + tablaBoletas(r.resultados);
 }
 
 /** Atajo: la pregunta que el sistema existe para responder. */
@@ -1347,10 +1491,13 @@ async function buscarAbiertas() {
     (todo.length === 1 ? ' boleta sigue abierta' : ' boletas siguen abiertas') + '</b>' +
     'Todo lo que no está cerrado sigue en bodega o en taller.</div>';
 
-  todo.forEach(function (item) {
-    html += tarjetaResultado(item.boleta, item.articulos, true);
+  // Lo más quieto primero: las que llevan más días sin que nadie las toque
+  // son justamente las que se están olvidando.
+  todo.sort(function (a, b) {
+    return (b.boleta.dias_sin_movimiento || 0) - (a.boleta.dias_sin_movimiento || 0);
   });
-  caja.innerHTML = html;
+
+  caja.innerHTML = html + tablaBoletas(todo);
 }
 
 function limpiarBusqueda() {
@@ -1363,9 +1510,130 @@ function limpiarBusqueda() {
     'Digite algo y presione Buscar, o escoja un estado para ver la lista.</div>';
 }
 
+/* --------------------------------------------------------------------------
+   TABLA DE RESULTADOS
+
+   Solo lo que sirve para decidir de un vistazo: estado, número, tipo, cliente,
+   fecha y los dos contadores de días. El detalle completo con los artículos
+   se abre al tocar la fila.
+   -------------------------------------------------------------------------- */
+
+/** 'En revision' -> 'e-revision'. Un solo lugar donde se decide el color. */
+function claseEstado(nombreEstado) {
+  var mapa = {
+    'Nuevo ingreso': 'e-nuevo',
+    'En revision':   'e-revision',
+    'En revisión':   'e-revision',
+    'Revisada':      'e-revisada',
+    'Resuelta':      'e-resuelta',
+    'Cerrada':       'e-cerrada'
+  };
+  return mapa[String(nombreEstado).trim()] || 'e-nuevo';
+}
+
+/** El color del número de días sale del semáforo que calculó el servidor. */
+function claseDias(semaforo) {
+  if (semaforo === 'atrasado') return 'atrasado';
+  if (semaforo === 'atencion') return 'atencion';
+  return 'ok';
+}
+
+function textoDias(n) {
+  if (n === null || n === undefined) return '—';
+  if (n === 0) return 'hoy';
+  if (n === 1) return '1 día';
+  return n + ' días';
+}
+
+function tablaBoletas(items) {
+  var filas = items.map(function (item) {
+    var b = item.boleta;
+    var cls = claseEstado(b.estado_boleta);
+    var esInterna = (b.tipo_boleta === 'Revision interna');
+    var unidades = (item.articulos || []).length;
+
+    return '' +
+      '<tr onclick="verBoleta(\'' + escapar(b.id_garantia) + '\')">' +
+        '<td class="col-punto"><span class="punto ' + cls + '"></span></td>' +
+
+        '<td class="num" data-rotulo="Boleta">' +
+          '<div class="id-sistema">' + escapar(b.id_garantia) + '</div>' +
+          '<div class="id-fisico">' +
+            (b.num_boleta_manual ? 'Física ' + escapar(b.num_boleta_manual) : 'Sin boleta física') +
+          '</div>' +
+        '</td>' +
+
+        '<td data-rotulo="Tipo">' +
+          '<span class="tipo ' + (esInterna ? 'interna' : 'cliente') + '">' +
+          (esInterna ? 'Revisión interna' : 'Garantía') + '</span>' +
+        '</td>' +
+
+        '<td data-rotulo="Cliente">' +
+          '<div class="cliente">' +
+            (esInterna ? 'Mercadería de la empresa' : escapar(b.cliente_nombre || '—')) +
+          '</div>' +
+          '<div class="sub">' + unidades +
+            (unidades === 1 ? ' unidad' : ' unidades') +
+            (b.cliente_telefono ? ' · ' + escapar(b.cliente_telefono) : '') +
+          '</div>' +
+        '</td>' +
+
+        '<td class="num" data-rotulo="Ingreso">' +
+          escapar(soloFecha(b.fecha_recepcion)) +
+          '<div class="sub">' + escapar(b.recibido_por_nombre || b.recibido_por || '') + '</div>' +
+        '</td>' +
+
+        '<td data-rotulo="En taller">' +
+          '<span class="dias ' + claseDias(b.semaforo) + '">' +
+          textoDias(b.dias_en_taller) + '</span>' +
+        '</td>' +
+
+        '<td data-rotulo="Sin movimiento">' +
+          '<span class="dias ' + claseDias(b.semaforo) + '">' +
+          textoDias(b.dias_sin_movimiento) + '</span>' +
+        '</td>' +
+
+        '<td data-rotulo="Estado">' +
+          '<span class="estado ' + cls + '">' + escapar(b.estado_boleta) + '</span>' +
+        '</td>' +
+      '</tr>';
+  }).join('');
+
+  return '' +
+    '<div class="envoltura-tabla"><table class="tabla-boletas"><thead><tr>' +
+      '<th class="col-punto"></th><th>Boleta</th><th>Tipo</th><th>Cliente</th>' +
+      '<th>Ingreso</th><th>En taller</th><th>Sin movimiento</th><th>Estado</th>' +
+    '</tr></thead><tbody>' + filas + '</tbody></table></div>' +
+    '<p class="subtitulo" style="margin-top:12px;font-size:.8rem">' +
+      'Toque una fila para ver el detalle e imprimir.</p>';
+}
+
+async function verBoleta(idGarantia) {
+  var caja = document.getElementById('resultados');
+  var previo = caja.innerHTML;
+
+  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Abriendo…</div></div>';
+  var r = await api('obtener', { id_garantia: idGarantia });
+
+  if (!r.ok) {
+    caja.innerHTML = previo;
+    alert('No se pudo abrir la boleta.');
+    return;
+  }
+
+  estado.listaPrevia = previo;
+  caja.innerHTML =
+    '<div class="acciones" style="margin-bottom:14px">' +
+      '<button class="btn secundario pequeno" onclick="volverALista()">‹ Volver a la lista</button>' +
+    '</div>' + tarjetaResultado(r.boleta, r.articulos, true);
+}
+
+function volverALista() {
+  if (estado.listaPrevia) document.getElementById('resultados').innerHTML = estado.listaPrevia;
+}
+
 function tarjetaResultado(b, lineas, conBotonImprimir) {
-  var clase = b.estado_boleta === 'Cerrada' ? 'cerrada'
-            : (b.estado_boleta === 'Nuevo ingreso' ? 'nuevo' : 'proceso');
+  var clase = claseEstado(b.estado_boleta);
 
   var esInterna = (b.tipo_boleta === 'Revision interna');
   var rotuloTipo = esInterna ? 'Revisión interna' : 'Garantía de cliente';
@@ -1394,6 +1662,14 @@ function tarjetaResultado(b, lineas, conBotonImprimir) {
           escapar(soloFecha(b.fecha_recepcion)) +
           (b.origen_tipo ? ' · ' + escapar(b.origen_tipo) : '') +
           (b.origen_detalle ? ' (' + escapar(b.origen_detalle) + ')' : '') + '</div>' +
+        '<div class="dato"><span class="etiqueta">Recibido por</span>' +
+          escapar(b.recibido_por_nombre || b.recibido_por || '—') + '</div>' +
+        (b.dias_en_taller !== undefined && b.dias_en_taller !== null
+          ? '<div class="dato"><span class="etiqueta">Tiempo</span>' +
+            '<span class="dias ' + claseDias(b.semaforo) + '">' +
+            textoDias(b.dias_en_taller) + ' en taller</span> · ' +
+            textoDias(b.dias_sin_movimiento) + ' sin movimiento</div>'
+          : '') +
       '</div>';
 
   if (lineas && lineas.length) {
@@ -1514,7 +1790,7 @@ function construirImpresion(b, lineas) {
 
       '<div class="firmas">' +
         '<div><div class="linea"></div>Recibido por<br><b>' +
-          escapar(b.recibido_por || '') + '</b></div>' +
+          escapar(b.recibido_por_nombre || b.recibido_por || '') + '</b></div>' +
         '<div><div class="linea"></div>Entregado por</div>' +
         '<div><div class="linea"></div>Fecha</div>' +
       '</div>' +
