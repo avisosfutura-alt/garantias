@@ -528,6 +528,10 @@ table.lineas tr:last-child td{border-bottom:0}
      ========================================================================= -->
 <div id="app" style="display:none">
 
+  <!-- Aviso de versiones desparejas. Vive fuera de las pantallas porque no
+       pertenece a ninguna: es un problema de la instalación, no del trabajo. -->
+  <div id="avisoVersion" style="display:none"></div>
+
   <header>
     <div class="barra">
       <div class="marca-caja">
@@ -955,6 +959,7 @@ async function alRecibirCredencial(respuesta) {
   estado.empresa  = r.empresa || {};
   estado.emisores = r.emisores || {};
   estado.build    = r.build || '';
+  revisarVersiones();
   estado.emisorPorDefecto = r.emisor_por_defecto || '';
   estado.listas   = r.listas  || {};
 
@@ -1461,6 +1466,44 @@ function recuperarBorrador() {
    de unidades pendientes, cada una con lo que hay que llenar. Se guarda de
    una en una, no todo junto: si algo falla, no se pierde el resto.
    ========================================================================== */
+/* --------------------------------------------------------------------------
+   AVISO DE VERSIONES DESPAREJAS
+
+   El caso real: se implementó el Codigo.gs nuevo pero la página seguía siendo
+   la vieja. El servidor mandaba las boletas agrupadas y la página buscaba una
+   lista plana, así que no encontraba nada y anunciaba "el taller está al día".
+
+   Eso es peor que un error: es una mentira tranquilizadora. Alguien podría
+   creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
+   la app ahora se da cuenta sola y lo dice arriba de todo.
+   -------------------------------------------------------------------------- */
+var BUILD_ESPERADO = 'fase2-build-5';
+
+function revisarVersiones() {
+  var caja = document.getElementById('avisoVersion');
+  if (!caja) return;
+
+  var servidor = estado.build || '';
+  if (servidor === BUILD_ESPERADO) { caja.style.display = 'none'; return; }
+
+  var quePasa = servidor
+    ? 'Esta página es la <b>' + escapar(BUILD_ESPERADO) + '</b> y el script publicado ' +
+      'es la <b>' + escapar(servidor) + '</b>.'
+    : 'El script publicado es más viejo que esta página: ni siquiera reporta su versión.';
+
+  caja.style.display = 'block';
+  caja.innerHTML =
+    '<div style="background:#4a1d20;border-bottom:2px solid var(--rojo);' +
+    'padding:12px 16px;font-size:.85rem;color:#ffd7d9">' +
+      '<b style="display:block;margin-bottom:3px">⚠ Las dos mitades del sistema no coinciden</b>' +
+      quePasa + ' Mientras no coincidan, <b>las listas pueden salir vacías aunque ' +
+      'sí haya boletas.</b><br>' +
+      '<span style="opacity:.85">Arréglelo así: pegue el <code>Codigo.gs</code> más ' +
+      'reciente y use <b>Implementar → Administrar implementaciones → lápiz → ' +
+      'Nueva versión</b>; y suba el <code>index.html</code> nuevo a GitHub.</span>' +
+    '</div>';
+}
+
 function cajaDeCola(cola) {
   return document.getElementById(cola === 'diagnostico' ? 'colaTaller' : 'colaResoluciones');
 }
@@ -1486,6 +1529,21 @@ async function cargarCola(cola, abrir) {
     caja.innerHTML = '<div class="aviso error"><b>No se pudo cargar</b>' +
       ((r.errores || [r.error]).join(' ')) + '</div>';
     return;
+  }
+
+  /* Tolerancia con el servidor viejo: antes mandaba una lista plana de
+     unidades. Se agrupa aquí para que la pantalla funcione igual, en vez de
+     mostrar una lista vacía que parecería decir que no hay nada que hacer. */
+  if (!r.boletas && r.pendientes) {
+    var porBoleta = {}, ordenB = [];
+    r.pendientes.forEach(function (p) {
+      var k = p.boleta.id_garantia;
+      if (!porBoleta[k]) { porBoleta[k] = { boleta: p.boleta, pendientes: [] }; ordenB.push(k); }
+      porBoleta[k].pendientes.push(p.linea);
+    });
+    r.boletas = ordenB.map(function (k) { return porBoleta[k]; });
+    r.total_boletas = r.boletas.length;
+    r.total_unidades = r.pendientes.length;
   }
 
   estado.colas[cola] = r;
@@ -2414,7 +2472,7 @@ function diagnostico() {
   }
 
   // --- ¿Qué versión del script está publicada? ---
-  var buildEsperado = 'fase2-build-4';
+  var buildEsperado = BUILD_ESPERADO;
   var buildServidor = estado.build || '';
 
   if (estado.usuario) {
