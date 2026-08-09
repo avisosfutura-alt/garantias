@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1f3864">
+<meta name="theme-color" content="#232c7c">
 <title>Garantías — Futura Latinoamérica</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
@@ -14,17 +14,37 @@
 /* ==========================================================================
    Base
    ========================================================================== */
+/* --------------------------------------------------------------------------
+   PALETA — tomada de los tres logos de la casa
+
+   Futura Latinoamericana ... azul marino + rojo
+   Multitiendas ............. morado + cian + coral
+   Tres & Tres Estetic ...... negro + dorado
+
+   El azul de Futura manda, porque es la empresa. El morado de Multitiendas
+   entra como segundo tono en el encabezado, el dorado de Tres & Tres es el
+   acento que marca lo activo, y el cian señala las líneas de artículo. El
+   rojo queda reservado para errores, que es donde ya lo espera el ojo.
+   -------------------------------------------------------------------------- */
 :root{
-  --azul:#1f3864;
-  --azul-claro:#2d4f8a;
-  --azul-suave:#eef2f9;
+  --azul:#232c7c;         /* Futura: azul marino */
+  --azul-claro:#39449b;
+  --azul-suave:#eef0fa;
+  --morado:#4a2b52;       /* Multitiendas */
+  --cian:#00aecb;         /* Multitiendas */
+  --cian-suave:#e4f7fb;
+  --oro:#c9a227;          /* Tres & Tres */
+  --oro-texto:#8a6d1b;    /* el dorado no se lee sobre blanco; para texto va este */
+  --oro-suave:#fbf3de;
+  --coral:#e8794a;        /* Multitiendas */
+
   --gris:#5a6472;
   --gris-linea:#dde2ea;
-  --fondo:#f4f6fa;
+  --fondo:#f5f6fb;
   --blanco:#fff;
   --verde:#1b7a4b;
   --verde-suave:#e6f4ec;
-  --rojo:#b3261e;
+  --rojo:#d32027;         /* Futura: rojo */
   --rojo-suave:#fdecea;
   --ambar:#8a6100;
   --ambar-suave:#fff5e0;
@@ -47,10 +67,12 @@ button,input,select,textarea{font-family:inherit;font-size:16px}
    Encabezado y navegación
    ========================================================================== */
 header{
-  background:var(--azul);color:#fff;
+  background:linear-gradient(100deg,var(--azul) 0%,var(--azul) 45%,var(--morado) 100%);
+  color:#fff;
   padding:calc(env(safe-area-inset-top) + 12px) 16px 12px;
   position:sticky;top:0;z-index:50;
   box-shadow:0 2px 8px rgba(16,24,40,.15);
+  border-bottom:3px solid var(--oro);
 }
 .barra{display:flex;align-items:center;gap:12px;max-width:1100px;margin:0 auto}
 .marca{font-weight:700;font-size:1.05rem;letter-spacing:.2px;flex:1;min-width:0}
@@ -72,7 +94,7 @@ nav button{
   padding:13px 18px;cursor:pointer;white-space:nowrap;
   border-bottom:3px solid transparent;font-size:.9rem;font-weight:500;
 }
-nav button.activo{color:#fff;border-bottom-color:#fff;font-weight:600}
+nav button.activo{color:#fff;border-bottom-color:var(--oro);font-weight:600}
 
 /* ==========================================================================
    Estructura
@@ -105,6 +127,28 @@ h1{font-size:1.35rem;margin:0 0 4px}
 label{font-size:.8rem;font-weight:600;color:#33415c}
 label .req{color:var(--rojo)}
 label .ayuda{display:block;font-weight:400;color:var(--gris);font-size:.72rem;margin-top:1px}
+
+/* --------------------------------------------------------------------------
+   ALINEACIÓN DE LOS CAMPOS
+
+   El problema: en una fila de dos columnas, un campo con texto de ayuda tiene
+   la etiqueta más alta que el de al lado, y los cuadros quedaban a distinta
+   altura — se veía descuadrado.
+
+   Dos medidas que se refuerzan:
+   1. Se reserva de antemano el renglón de la ayuda en los campos que van en
+      fila, aunque ese campo no tenga ayuda. Así todas las etiquetas miden lo
+      mismo y los cuadros arrancan parejos.
+   2. Por si algún texto de ayuda se va a dos renglones, el cuadro se ancla al
+      fondo de su celda. Aun en ese caso los cuadros quedan alineados entre sí.
+   -------------------------------------------------------------------------- */
+.rejilla.dos > .campo > label,
+.rejilla.tres > .campo > label{min-height:2.95em}
+
+.campo > input,
+.campo > select,
+.campo > textarea,
+.campo > .caja-origen{margin-top:auto}
 input,select,textarea{
   width:100%;padding:11px 12px;border:1px solid #c6cedb;border-radius:8px;
   background:#fff;color:inherit;
@@ -142,7 +186,7 @@ textarea{min-height:74px;resize:vertical}
    Líneas de artículo
    ========================================================================== */
 .unidad{
-  border:1px solid var(--gris-linea);border-left:4px solid var(--azul-claro);
+  border:1px solid var(--gris-linea);border-left:4px solid var(--cian);
   border-radius:var(--radio);padding:16px;margin-bottom:14px;background:#fdfdff;
 }
 .unidad-cabecera{
@@ -190,6 +234,35 @@ textarea{min-height:74px;resize:vertical}
 .estado.nuevo{background:var(--azul-suave);color:var(--azul)}
 .estado.proceso{background:var(--ambar-suave);color:var(--ambar)}
 .estado.cerrada{background:var(--verde-suave);color:var(--verde)}
+
+/* Distintivo del tipo de boleta. La revisión interna se marca en dorado para
+   que salte a la vista que esa no es de ningún cliente. */
+.tipo{
+  display:inline-block;padding:3px 11px;border-radius:999px;
+  font-size:.74rem;font-weight:700;
+}
+.tipo.cliente{background:var(--cian-suave);color:#046b7d}
+.tipo.interna{background:var(--oro-suave);color:var(--oro-texto)}
+
+/* Selector grande de tipo de boleta, arriba del formulario */
+.selector-tipo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.selector-tipo label{
+  border:2px solid var(--gris-linea);border-radius:var(--radio);
+  padding:14px;cursor:pointer;background:#fff;min-height:0;
+  display:flex;flex-direction:column;gap:3px;
+}
+.selector-tipo label:hover{border-color:var(--azul-claro)}
+.selector-tipo input{position:absolute;opacity:0;width:0;height:0}
+.selector-tipo .titulo{font-size:.95rem;font-weight:700;color:var(--azul)}
+.selector-tipo .desc{font-size:.75rem;font-weight:400;color:var(--gris);line-height:1.35}
+.selector-tipo label.escogido{border-color:var(--azul);background:var(--azul-suave)}
+.selector-tipo label.escogido.interna{border-color:var(--oro);background:var(--oro-suave)}
+.selector-tipo label.escogido.interna .titulo{color:var(--oro-texto)}
+@media(max-width:520px){.selector-tipo{grid-template-columns:1fr}}
+
+/* Filtros del buscador */
+.filtros{display:grid;grid-template-columns:1fr;gap:12px}
+@media(min-width:700px){.filtros{grid-template-columns:repeat(3,1fr)}}
 
 .tabla-envoltura{overflow-x:auto;margin-top:6px}
 table.lineas{width:100%;border-collapse:collapse;font-size:.85rem;min-width:520px}
@@ -343,21 +416,32 @@ table.lineas tr:last-child td{border-bottom:0}
       <form id="formulario" autocomplete="off">
 
         <div class="tarjeta">
+          <h2>¿Qué se está recibiendo?</h2>
+          <div class="selector-tipo" id="selectorTipo"></div>
+        </div>
+
+        <div class="tarjeta">
           <h2>Boleta</h2>
           <div class="rejilla dos">
-            <div class="campo">
+            <div class="campo" id="campoBoletaManual">
               <label for="num_boleta_manual">
-                N° de boleta manual <span class="req">*</span>
-                <span class="ayuda">El número preimpreso del talonario del mensajero</span>
+                N° de boleta manual <span class="req" id="marcaReqBoleta">*</span>
+                <span class="ayuda" id="ayudaBoleta">El número preimpreso del talonario del mensajero</span>
               </label>
-              <input id="num_boleta_manual" name="num_boleta_manual" inputmode="numeric" required>
+              <input id="num_boleta_manual" name="num_boleta_manual" inputmode="numeric">
             </div>
             <div class="campo">
-              <label for="fecha_recepcion">Fecha de recepción <span class="req">*</span></label>
+              <label for="fecha_recepcion">
+                Fecha de recepción <span class="req">*</span>
+                <span class="ayuda">Cuándo llegó físicamente a bodega</span>
+              </label>
               <input type="date" id="fecha_recepcion" name="fecha_recepcion" required>
             </div>
             <div class="campo">
-              <label for="origen_tipo">Origen</label>
+              <label for="origen_tipo">
+                Origen
+                <span class="ayuda">De dónde viene el artículo</span>
+              </label>
               <select id="origen_tipo" name="origen_tipo" onchange="refrescarOrigenDetalle()">
                 <option value="">— Seleccione —</option>
               </select>
@@ -365,16 +449,14 @@ table.lineas tr:last-child td{border-bottom:0}
             <div class="campo">
               <label for="origen_detalle">
                 ¿Cuál?
-                <span class="ayuda">Sirve para saber a quién preguntarle si algo no cuadra</span>
+                <span class="ayuda" id="ayudaOrigen">Sirve para saber a quién preguntarle si algo no cuadra</span>
               </label>
-              <select id="origen_detalle" name="origen_detalle" disabled>
-                <option value="">— Primero elija el origen —</option>
-              </select>
+              <div class="caja-origen" id="cajaOrigenDetalle"></div>
             </div>
           </div>
         </div>
 
-        <div class="tarjeta">
+        <div class="tarjeta" id="tarjetaCliente">
           <h2>Cliente</h2>
           <div class="rejilla dos">
             <div class="campo ancho">
@@ -399,11 +481,14 @@ table.lineas tr:last-child td{border-bottom:0}
           </div>
         </div>
 
-        <div class="tarjeta">
+        <div class="tarjeta" id="tarjetaCompra">
           <h2>Compra</h2>
           <div class="rejilla tres">
             <div class="campo">
-              <label for="factura_referencia">N° de factura</label>
+              <label for="factura_referencia">
+                N° de factura
+                <span class="ayuda">La factura de venta en SiReTT</span>
+              </label>
               <input id="factura_referencia" name="factura_referencia">
             </div>
             <div class="campo">
@@ -468,7 +553,7 @@ table.lineas tr:last-child td{border-bottom:0}
     <section class="pantalla" id="pantallaGuardada">
       <div class="aviso exito">
         <b>Boleta registrada</b>
-        Quedó guardada con número de garantía <b id="garantiaAsignada"></b>.
+        Quedó guardada con el número <b id="garantiaAsignada"></b>.
       </div>
       <div id="detalleGuardada"></div>
       <div class="acciones no-imprimir" style="margin-top:18px">
@@ -487,15 +572,45 @@ table.lineas tr:last-child td{border-bottom:0}
     <section class="pantalla" id="pantallaBuscar">
       <h1>Buscar</h1>
       <p class="subtitulo">
-        Por número de boleta manual, número de garantía o nombre del cliente.
+        Puede buscar por texto, filtrar por estado y tipo, o las dos cosas.
+        Dejando el texto en blanco y escogiendo un estado sale la lista completa
+        de lo que está en esa situación.
       </p>
 
       <div class="tarjeta">
         <form onsubmit="event.preventDefault();buscar()">
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <input id="textoBusqueda" placeholder="Ej: 12345 o GAR-2026-0001"
-                   style="flex:1;min-width:200px" autocomplete="off">
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+            <input id="textoBusqueda"
+                   placeholder="N° de boleta, N° del sistema o nombre del cliente"
+                   style="flex:1;min-width:220px" autocomplete="off">
             <button type="submit" class="btn primario">Buscar</button>
+          </div>
+
+          <div class="filtros">
+            <div class="campo">
+              <label for="campoBusqueda">Buscar el texto en</label>
+              <select id="campoBusqueda">
+                <option value="todo">Cualquier campo</option>
+                <option value="boleta">N° de boleta física</option>
+                <option value="garantia">N° del sistema (GAR / REV)</option>
+                <option value="cliente">Nombre del cliente</option>
+              </select>
+            </div>
+            <div class="campo">
+              <label for="estadoBusqueda">Estado de la boleta</label>
+              <select id="estadoBusqueda"><option value="">Todos los estados</option></select>
+            </div>
+            <div class="campo">
+              <label for="tipoBusqueda">Tipo</label>
+              <select id="tipoBusqueda"><option value="">Garantías y revisiones</option></select>
+            </div>
+          </div>
+
+          <div class="acciones" style="margin-top:12px">
+            <button type="button" class="btn secundario pequeno"
+                    onclick="buscarPorEstado('')">Ver todo lo que sigue abierto</button>
+            <button type="button" class="btn secundario pequeno"
+                    onclick="limpiarBusqueda()">Limpiar filtros</button>
           </div>
         </form>
       </div>
@@ -503,7 +618,7 @@ table.lineas tr:last-child td{border-bottom:0}
       <div id="resultados">
         <div class="vacio">
           <span class="icono">🔎</span>
-          Digite un número de boleta y presione Buscar.
+          Digite algo y presione Buscar, o escoja un estado para ver la lista.
         </div>
       </div>
     </section>
@@ -540,6 +655,7 @@ var estado = {
   empresa: {},
   listas: {},
   ultimaBoleta: null,
+  tipoBoleta: 'Garantia de cliente',
   contadorUnidades: 0
 };
 
@@ -734,43 +850,157 @@ function irA(id) {
    FORMULARIO DE RECEPCIÓN
    ========================================================================== */
 function prepararFormulario() {
-  var sel = document.getElementById('origen_tipo');
-  sel.innerHTML = '<option value="">— Seleccione —</option>';
-  (estado.listas.origen_tipo || []).forEach(function (v) {
+  armarSelectorTipo();
+
+  llenarSelect(document.getElementById('origen_tipo'),
+               estado.listas.origen_tipo || [], '— Seleccione —');
+
+  // Filtros del buscador
+  llenarSelect(document.getElementById('estadoBusqueda'),
+               estado.listas.estados_boleta || [], 'Todos los estados');
+  var selTipo = document.getElementById('tipoBusqueda');
+  selTipo.innerHTML = '<option value="">Garantías y revisiones</option>';
+  (estado.listas.tipo_boleta || []).forEach(function (t) {
     var o = document.createElement('option');
-    o.value = v; o.textContent = v;
-    sel.appendChild(o);
+    o.value = t.valor; o.textContent = t.rotulo;
+    selTipo.appendChild(o);
   });
 
   document.getElementById('fecha_recepcion').value = hoyISO();
+  refrescarOrigenDetalle();
 
   if (!recuperarBorrador()) {
+    escogerTipo('Garantia de cliente');
     agregarUnidad();
   }
 
   document.getElementById('formulario').addEventListener('input', guardarBorrador);
+  document.getElementById('formulario').addEventListener('change', guardarBorrador);
   document.getElementById('formulario').addEventListener('submit', guardar);
 }
 
-function refrescarOrigenDetalle() {
-  var tipo = document.getElementById('origen_tipo').value;
-  var sel = document.getElementById('origen_detalle');
-  var mapa = estado.listas.origen_detalle || {};
-  var opciones = mapa[tipo] || [];
-
-  sel.innerHTML = '';
-  if (!tipo) {
-    sel.disabled = true;
-    sel.innerHTML = '<option value="">— Primero elija el origen —</option>';
-    return;
-  }
-  sel.disabled = false;
-  sel.innerHTML = '<option value="">— Seleccione —</option>';
-  opciones.forEach(function (v) {
+function llenarSelect(sel, valores, rotuloVacio) {
+  sel.innerHTML = '<option value="">' + escapar(rotuloVacio) + '</option>';
+  (valores || []).forEach(function (v) {
     var o = document.createElement('option');
     o.value = v; o.textContent = v;
     sel.appendChild(o);
   });
+}
+
+/* --------------------------------------------------------------------------
+   TIPO DE BOLETA
+
+   Garantía de cliente ... mercadería vendida que el cliente devuelve.
+   Revisión interna ...... artículo propio, sin vender, que salió defectuoso.
+
+   Cada uno lleva su propia numeración (GAR- y REV-), y en la revisión interna
+   no hay cliente ni boleta del mensajero, así que esos campos se ocultan y
+   dejan de ser obligatorios.
+   -------------------------------------------------------------------------- */
+function armarSelectorTipo() {
+  var caja = document.getElementById('selectorTipo');
+  var descripciones = {
+    'Garantia de cliente': 'Mercadería que ya se le vendió a un cliente y la devuelve por garantía.',
+    'Revision interna':    'Artículo de la empresa, todavía sin vender, que salió defectuoso y va al taller.'
+  };
+
+  caja.innerHTML = '';
+  (estado.listas.tipo_boleta || []).forEach(function (t) {
+    var lbl = document.createElement('label');
+    lbl.dataset.valor = t.valor;
+    if (t.prefijo === 'REV') lbl.classList.add('interna');
+    lbl.innerHTML =
+      '<input type="radio" name="tipo_boleta" value="' + escapar(t.valor) + '">' +
+      '<span class="titulo">' + escapar(t.rotulo) + '</span>' +
+      '<span class="desc">' + escapar(descripciones[t.valor] || '') + '</span>' +
+      '<span class="desc" style="margin-top:4px"><b>Numeración ' + escapar(t.prefijo) + '-</b></span>';
+    lbl.onclick = function () { escogerTipo(t.valor); };
+    caja.appendChild(lbl);
+  });
+}
+
+function escogerTipo(valor) {
+  estado.tipoBoleta = valor;
+  var esInterna = (valor === 'Revision interna');
+
+  Array.prototype.forEach.call(
+    document.querySelectorAll('#selectorTipo label'),
+    function (l) {
+      var escogido = (l.dataset.valor === valor);
+      l.classList.toggle('escogido', escogido);
+      l.querySelector('input').checked = escogido;
+    }
+  );
+
+  // En revisión interna no hay cliente ni factura de venta que valga.
+  document.getElementById('tarjetaCliente').style.display = esInterna ? 'none' : '';
+  document.getElementById('tarjetaCompra').style.display  = esInterna ? 'none' : '';
+
+  // Y hay que quitarle el "obligatorio" al nombre del cliente, no solo
+  // esconderlo: un campo obligatorio y oculto bloquea el guardado para
+  // siempre, y el navegador ni siquiera puede decir cuál es porque no lo
+  // puede mostrar en pantalla.
+  document.getElementById('cliente_nombre').required = !esInterna;
+
+  refrescarExigenciaBoleta();
+  guardarBorrador();
+}
+
+/* La boleta manual solo es obligatoria cuando de verdad existió una: vino de
+   una sucursal o de un mensajero, con su talonario. En revisión interna o
+   cuando el cliente llegó al mostrador, no hay papel que copiar. */
+function refrescarExigenciaBoleta() {
+  var esInterna = (estado.tipoBoleta === 'Revision interna');
+  var origen = document.getElementById('origen_tipo').value;
+  var exige = !esInterna && origen !== 'Entrega directa del cliente';
+
+  var campo = document.getElementById('num_boleta_manual');
+  campo.required = exige;
+  document.getElementById('marcaReqBoleta').style.display = exige ? '' : 'none';
+
+  document.getElementById('ayudaBoleta').textContent = exige
+    ? 'El número preimpreso del talonario del mensajero'
+    : (esInterna
+        ? 'No aplica en revisión interna. Puede dejarlo en blanco.'
+        : 'Opcional: el cliente llegó al mostrador, no hubo boleta de mensajero.');
+}
+
+/**
+ * El control de "¿Cuál?" cambia según el origen: lista cerrada para las
+ * sucursales, texto libre para los mensajeros. Los mensajeros cambian seguido
+ * y mantener una lista al día sería una tarea más que nadie va a hacer.
+ */
+function refrescarOrigenDetalle(valorPrevio) {
+  var tipo = document.getElementById('origen_tipo').value;
+  var caja = document.getElementById('cajaOrigenDetalle');
+  var ayuda = document.getElementById('ayudaOrigen');
+  var mapa = estado.listas.origen_detalle || {};
+  var config = mapa[tipo];
+
+  refrescarExigenciaBoleta();
+
+  if (!tipo || !config) {
+    caja.innerHTML = '<select id="origen_detalle" disabled>' +
+                     '<option>— Primero elija el origen —</option></select>';
+    ayuda.textContent = 'Sirve para saber a quién preguntarle si algo no cuadra';
+    return;
+  }
+
+  ayuda.textContent = config.ayuda || 'Sirve para saber a quién preguntarle si algo no cuadra';
+
+  if (config.modo === 'texto') {
+    caja.innerHTML = '<input id="origen_detalle" name="origen_detalle" autocomplete="off">';
+  } else {
+    var html = '<select id="origen_detalle" name="origen_detalle">' +
+               '<option value="">— Seleccione —</option>';
+    (config.valores || []).forEach(function (v) {
+      html += '<option value="' + escapar(v) + '">' + escapar(v) + '</option>';
+    });
+    caja.innerHTML = html + '</select>';
+  }
+
+  if (valorPrevio) document.getElementById('origen_detalle').value = valorPrevio;
 }
 
 function agregarUnidad(copiaDe) {
@@ -864,14 +1094,22 @@ function renumerarUnidades() {
 }
 
 function leerFormulario() {
-  var datos = {};
+  var datos = { tipo_boleta: estado.tipoBoleta || 'Garantia de cliente' };
+
   ['num_boleta_manual','fecha_recepcion','origen_tipo','origen_detalle',
    'cliente_nombre','cliente_identificacion','cliente_telefono','cliente_correo',
    'factura_referencia','fecha_compra','id_garantia_relacionada','observaciones']
     .forEach(function (id) {
       var el = document.getElementById(id);
-      datos[id] = el ? el.value.trim() : '';
+      datos[id] = el ? String(el.value).trim() : '';
     });
+
+  // En revisión interna no hay cliente ni factura: los campos están ocultos,
+  // pero si quedó algo digitado antes de cambiar de tipo, no se manda.
+  if (datos.tipo_boleta === 'Revision interna') {
+    ['cliente_nombre','cliente_identificacion','cliente_telefono','cliente_correo',
+     'factura_referencia','fecha_compra'].forEach(function (id) { datos[id] = ''; });
+  }
 
   datos.articulos = [];
   Array.prototype.forEach.call(
@@ -891,6 +1129,14 @@ function leerFormulario() {
 
 async function guardar(evento) {
   evento.preventDefault();
+
+  // Red de seguridad: ningún campo escondido puede quedar como obligatorio.
+  // Si pasara, el navegador bloquearía el guardado sin poder decir cuál es,
+  // porque no puede enfocar algo que no se ve.
+  Array.prototype.forEach.call(
+    document.querySelectorAll('#formulario [required]'),
+    function (el) { if (el.offsetParent === null) el.required = false; }
+  );
 
   var boton = document.getElementById('btnGuardar');
   boton.disabled = true;
@@ -930,6 +1176,7 @@ function limpiarFormulario(confirmar) {
   document.getElementById('formulario').reset();
   document.getElementById('unidades').innerHTML = '';
   document.getElementById('fecha_recepcion').value = hoyISO();
+  escogerTipo('Garantia de cliente');
   refrescarOrigenDetalle();
   agregarUnidad();
   localStorage.removeItem(LLAVE_BORRADOR);
@@ -976,16 +1223,17 @@ function recuperarBorrador() {
     return false;
   }
 
+  escogerTipo(datos.tipo_boleta || 'Garantia de cliente');
+
   Object.keys(datos).forEach(function (id) {
-    if (id === 'articulos' || id === '_guardado') return;
+    if (id === 'articulos' || id === '_guardado' || id === 'tipo_boleta') return;
     var el = document.getElementById(id);
     if (el) el.value = datos[id] || '';
   });
 
-  refrescarOrigenDetalle();
-  if (datos.origen_detalle) {
-    document.getElementById('origen_detalle').value = datos.origen_detalle;
-  }
+  // El control de origen se reconstruye y de una vez recupera su valor: puede
+  // ser un combo o una caja de texto según el origen que se había escogido.
+  refrescarOrigenDetalle(datos.origen_detalle);
 
   document.getElementById('unidades').innerHTML = '';
   (datos.articulos || []).forEach(function (a) {
@@ -1006,13 +1254,24 @@ function recuperarBorrador() {
    BÚSQUEDA
    ========================================================================== */
 async function buscar() {
-  var texto = document.getElementById('textoBusqueda').value.trim();
-  if (!texto) return;
+  var filtros = {
+    texto:       document.getElementById('textoBusqueda').value.trim(),
+    campo:       document.getElementById('campoBusqueda').value,
+    estado:      document.getElementById('estadoBusqueda').value,
+    tipo_boleta: document.getElementById('tipoBusqueda').value
+  };
 
   var caja = document.getElementById('resultados');
+
+  if (!filtros.texto && !filtros.estado && !filtros.tipo_boleta) {
+    caja.innerHTML = '<div class="aviso alerta"><b>Falta decir qué buscar</b>' +
+      'Digite un texto, o escoja un estado o un tipo.</div>';
+    return;
+  }
+
   caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Buscando…</div></div>';
 
-  var r = await api('buscar', { texto: texto });
+  var r = await api('buscar', filtros);
 
   if (!r.ok) {
     caja.innerHTML = '<div class="aviso error"><b>No se pudo buscar</b>' +
@@ -1023,7 +1282,7 @@ async function buscar() {
   if (!r.total) {
     caja.innerHTML =
       '<div class="vacio"><span class="icono">📭</span>' +
-      'No hay ninguna boleta que coincida con <b>' + escapar(texto) + '</b>.<br>' +
+      'No hay ninguna boleta que cumpla con eso.<br>' +
       '<span style="font-size:.86rem">Si la boleta existe en papel y no aparece aquí, ' +
       'es que nunca se registró.</span></div>';
     return;
@@ -1033,30 +1292,104 @@ async function buscar() {
              (r.total === 1 ? ' boleta encontrada' : ' boletas encontradas') +
              (r.exacto ? '' : ' (coincidencia parcial)') + '</p>';
 
+  // Nunca recortar en silencio: si se dejaron resultados por fuera, se dice.
+  if (r.recortado) {
+    html = '<div class="aviso alerta"><b>Se muestran las ' + r.total + ' más recientes</b>' +
+           'En total hay ' + r.total_real + '. Afine la búsqueda para verlas todas.</div>' + html;
+  }
+
   r.resultados.forEach(function (item) {
     html += tarjetaResultado(item.boleta, item.articulos, true);
   });
   caja.innerHTML = html;
 }
 
+/** Atajo: la pregunta que el sistema existe para responder. */
+function buscarPorEstado(valorEstado) {
+  document.getElementById('textoBusqueda').value = '';
+  document.getElementById('campoBusqueda').value = 'todo';
+  document.getElementById('tipoBusqueda').value = '';
+
+  if (valorEstado) {
+    document.getElementById('estadoBusqueda').value = valorEstado;
+    buscar();
+    return;
+  }
+
+  // "Todo lo que sigue abierto" = todo lo que no está cerrado. Como el filtro
+  // del servidor es por un estado a la vez, aquí se piden todos y se descartan
+  // las cerradas.
+  document.getElementById('estadoBusqueda').value = '';
+  buscarAbiertas();
+}
+
+async function buscarAbiertas() {
+  var caja = document.getElementById('resultados');
+  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Buscando…</div></div>';
+
+  var estados = (estado.listas.estados_boleta || []).filter(function (e) {
+    return e !== 'Cerrada';
+  });
+
+  var todo = [];
+  for (var i = 0; i < estados.length; i++) {
+    var r = await api('buscar', { texto: '', campo: 'todo', estado: estados[i] });
+    if (r.ok && r.resultados) todo = todo.concat(r.resultados);
+  }
+
+  if (!todo.length) {
+    caja.innerHTML = '<div class="vacio"><span class="icono">✅</span>' +
+      'No hay nada abierto. Todo lo registrado ya salió de bodega.</div>';
+    return;
+  }
+
+  var html = '<div class="aviso info"><b>' + todo.length +
+    (todo.length === 1 ? ' boleta sigue abierta' : ' boletas siguen abiertas') + '</b>' +
+    'Todo lo que no está cerrado sigue en bodega o en taller.</div>';
+
+  todo.forEach(function (item) {
+    html += tarjetaResultado(item.boleta, item.articulos, true);
+  });
+  caja.innerHTML = html;
+}
+
+function limpiarBusqueda() {
+  document.getElementById('textoBusqueda').value = '';
+  document.getElementById('campoBusqueda').value = 'todo';
+  document.getElementById('estadoBusqueda').value = '';
+  document.getElementById('tipoBusqueda').value = '';
+  document.getElementById('resultados').innerHTML =
+    '<div class="vacio"><span class="icono">🔎</span>' +
+    'Digite algo y presione Buscar, o escoja un estado para ver la lista.</div>';
+}
+
 function tarjetaResultado(b, lineas, conBotonImprimir) {
   var clase = b.estado_boleta === 'Cerrada' ? 'cerrada'
             : (b.estado_boleta === 'Nuevo ingreso' ? 'nuevo' : 'proceso');
 
+  var esInterna = (b.tipo_boleta === 'Revision interna');
+  var rotuloTipo = esInterna ? 'Revisión interna' : 'Garantía de cliente';
+
   var html =
     '<div class="resultado">' +
       '<div class="resultado-cabecera">' +
-        '<div><span class="etiqueta">N° de garantía</span>' +
+        '<div><span class="etiqueta">N° del sistema</span>' +
           '<span class="gar">' + escapar(b.id_garantia) + '</span></div>' +
-        '<div><span class="etiqueta">Boleta manual</span>' +
-          '<b>' + escapar(b.num_boleta_manual) + '</b></div>' +
+        '<div><span class="etiqueta">Boleta física</span>' +
+          '<b>' + escapar(b.num_boleta_manual || '—') + '</b></div>' +
+        '<div><span class="etiqueta">Tipo</span>' +
+          '<span class="tipo ' + (esInterna ? 'interna' : 'cliente') + '">' +
+          rotuloTipo + '</span></div>' +
         '<div><span class="etiqueta">Estado</span>' +
           '<span class="estado ' + clase + '">' + escapar(b.estado_boleta) + '</span></div>' +
       '</div>' +
       '<div class="rejilla dos" style="margin-bottom:12px">' +
-        '<div class="dato"><span class="etiqueta">Cliente</span>' +
-          escapar(b.cliente_nombre) +
-          (b.cliente_telefono ? ' · ' + escapar(b.cliente_telefono) : '') + '</div>' +
+        '<div class="dato"><span class="etiqueta">' +
+          (esInterna ? 'Mercadería' : 'Cliente') + '</span>' +
+          (esInterna ? 'De la empresa, sin vender'
+                     : escapar(b.cliente_nombre) +
+                       (b.cliente_telefono ? ' · ' + escapar(b.cliente_telefono) : '')) +
+        '</div>' +
         '<div class="dato"><span class="etiqueta">Recibido</span>' +
           escapar(soloFecha(b.fecha_recepcion)) +
           (b.origen_tipo ? ' · ' + escapar(b.origen_tipo) : '') +
@@ -1108,6 +1441,13 @@ async function imprimirDesdeBusqueda(idGarantia) {
    ========================================================================== */
 function construirImpresion(b, lineas) {
   var e = estado.empresa || {};
+  var esInterna = (b.tipo_boleta === 'Revision interna');
+
+  // Los datos de contacto solo salen si existen: si no, no se imprime ni el
+  // renglón, para que no quede un "Tel. ·" suelto.
+  var contacto = [];
+  if (e.telefono) contacto.push('Tel. ' + e.telefono);
+  if (e.correo)   contacto.push(e.correo);
 
   var filas = (lineas || []).map(function (l, i) {
     return '<tr>' +
@@ -1128,27 +1468,36 @@ function construirImpresion(b, lineas) {
           (e.logo_url ? '<img src="' + escapar(e.logo_url) + '" alt=""><br>' : '') +
           '<div class="rs">' + escapar(e.razon_social || '') + '</div>' +
           (e.cedula_juridica ? 'Cédula jurídica ' + escapar(e.cedula_juridica) + '<br>' : '') +
-          escapar(e.direccion || '') + '<br>' +
-          'Tel. ' + escapar(e.telefono || '') + ' · ' + escapar(e.correo || '') +
+          escapar(e.direccion || '') +
+          (contacto.length ? '<br>' + escapar(contacto.join(' · ')) : '') +
         '</div>' +
         '<div class="doc-id">' +
-          '<div class="tipo">Boleta de recepción de garantía</div>' +
+          '<div class="tipo">' +
+            (esInterna ? 'Boleta de revisión interna' : 'Boleta de recepción de garantía') +
+          '</div>' +
           '<div class="gar">' + escapar(b.id_garantia) + '</div>' +
-          'Boleta manual N° <b>' + escapar(b.num_boleta_manual) + '</b><br>' +
+          (b.num_boleta_manual
+            ? 'Boleta física N° <b>' + escapar(b.num_boleta_manual) + '</b><br>' : '') +
           'Recibido: ' + escapar(soloFecha(b.fecha_recepcion)) +
         '</div>' +
       '</div>' +
 
-      '<div class="bloque"><h3>Cliente</h3><div class="par">' +
-        '<div><span>Nombre:</span> ' + escapar(b.cliente_nombre) + '</div>' +
-        '<div><span>Identificación:</span> ' + escapar(b.cliente_identificacion || '—') + '</div>' +
-        '<div><span>Teléfono:</span> ' + escapar(b.cliente_telefono || '—') + '</div>' +
-        '<div><span>Correo:</span> ' + escapar(b.cliente_correo || '—') + '</div>' +
-        '<div><span>Factura:</span> ' + escapar(b.factura_referencia || '—') + '</div>' +
-        '<div><span>Fecha de factura:</span> ' + escapar(soloFecha(b.fecha_compra) || '—') + '</div>' +
-        '<div><span>Origen:</span> ' + escapar(b.origen_tipo || '—') +
-          (b.origen_detalle ? ' — ' + escapar(b.origen_detalle) : '') + '</div>' +
-      '</div></div>' +
+      (esInterna
+        ? '<div class="bloque"><h3>Procedencia</h3><div class="par">' +
+            '<div><span>Mercadería:</span> de la empresa, todavía sin vender</div>' +
+            '<div><span>Origen:</span> ' + escapar(b.origen_tipo || '—') +
+              (b.origen_detalle ? ' — ' + escapar(b.origen_detalle) : '') + '</div>' +
+          '</div></div>'
+        : '<div class="bloque"><h3>Cliente</h3><div class="par">' +
+            '<div><span>Nombre:</span> ' + escapar(b.cliente_nombre) + '</div>' +
+            '<div><span>Identificación:</span> ' + escapar(b.cliente_identificacion || '—') + '</div>' +
+            '<div><span>Teléfono:</span> ' + escapar(b.cliente_telefono || '—') + '</div>' +
+            '<div><span>Correo:</span> ' + escapar(b.cliente_correo || '—') + '</div>' +
+            '<div><span>Factura:</span> ' + escapar(b.factura_referencia || '—') + '</div>' +
+            '<div><span>Fecha de factura:</span> ' + escapar(soloFecha(b.fecha_compra) || '—') + '</div>' +
+            '<div><span>Origen:</span> ' + escapar(b.origen_tipo || '—') +
+              (b.origen_detalle ? ' — ' + escapar(b.origen_detalle) : '') + '</div>' +
+          '</div></div>') +
 
       '<div class="bloque"><h3>Artículos recibidos (' +
         (lineas || []).length + ')</h3>' +

@@ -6,11 +6,14 @@
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
-  "background_color": "#f4f6fa",
-  "theme_color": "#1f3864",
+  "background_color": "#f5f6fb",
+  "theme_color": "#232c7c",
   "lang": "es-CR",
   "dir": "ltr",
-  "categories": ["business", "productivity"],
+  "categories": [
+    "business",
+    "productivity"
+  ],
   "icons": [
     {
       "src": "icon-192.png",
