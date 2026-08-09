@@ -1622,7 +1622,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase3-build-1';
+var BUILD_ESPERADO = 'fase3-build-3';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -1709,6 +1709,37 @@ function cambiarPestanaSalida(clave) {
   cargarCola('salida');
 }
 
+/**
+ * Explica una lista vacía.
+ *
+ * "No hay notas de crédito pendientes" tranquiliza, y puede ser falso: la
+ * unidad existe, solo que quedó contada bajo otra resolución. Este bloque
+ * muestra qué SÍ hay esperando salir, para que una lista vacía nunca se pueda
+ * confundir con un sistema al día.
+ */
+function porQueVacia(cola, r) {
+  if (cola !== 'nc' && cola !== 'salida') return '';
+
+  var censo = r.resueltas_sin_salir || {};
+  var claves = Object.keys(censo).filter(function (k) { return censo[k] > 0; });
+  if (!claves.length) return '';
+
+  var total = claves.reduce(function (a, k) { return a + censo[k]; }, 0);
+
+  return '<div style="margin-top:16px;font-size:.84rem;text-align:left;' +
+    'max-width:420px;margin-left:auto;margin-right:auto">' +
+    '<b>Hay ' + total + (total === 1 ? ' unidad resuelta' : ' unidades resueltas') +
+    ' que todavía no ha salido de bodega:</b><ul style="margin:6px 0 0;padding-left:18px">' +
+    claves.sort().map(function (k) {
+      return '<li>' + escapar(k) + ' · ' + censo[k] + '</li>';
+    }).join('') +
+    '</ul><div style="margin-top:8px;opacity:.75">' +
+    (cola === 'nc'
+      ? 'Las que no son nota de crédito se despachan en <b>Pendientes de salida</b>.'
+      : 'Las notas de crédito se despachan en su propia pestaña.') +
+    '</div></div>';
+}
+
 var VACIO_DE_COLA = {
   diagnostico: 'No hay nada pendiente de diagnóstico. El taller está al día.',
   resolucion:  'No hay nada esperando resolución.',
@@ -1776,7 +1807,7 @@ async function cargarCola(cola, abrir) {
 
   if (!r.total_boletas) {
     caja.innerHTML = '<div class="vacio"><span class="icono">✅</span>' +
-      VACIO_DE_COLA[cola] + '</div>';
+      VACIO_DE_COLA[cola] + porQueVacia(cola, r) + '</div>';
     return;
   }
 
@@ -1961,8 +1992,8 @@ function tarjetaDiagnostico(p) {
     '<div class="unidad" data-linea="' + escapar(id) + '">' +
       cabeceraUnidad(p) +
       '<div class="rejilla dos">' +
-        '<div class="campo"><label>¿Qué encontró? <span class="req">*</span>' +
-          '<span class="ayuda">"Sin defecto encontrado" también es un resultado válido</span></label>' +
+        '<div class="campo"><label>¿Cómo quedó la unidad? <span class="req">*</span>' +
+          '<span class="ayuda">Los tres primeros la dejan en el taller; los otros la pasan a resolución</span></label>' +
           // "Pendiente" no se ofrece: es el valor con el que la unidad ya
           // venía, y guardarlo no registraría ningún avance.
           '<select data-campo="diagnostico">' +
@@ -1970,11 +2001,6 @@ function tarjetaDiagnostico(p) {
               (estado.listas.diagnostico || []).filter(function (v) { return v !== 'Pendiente'; }),
               (l.diagnostico === 'Pendiente' ? '' : l.diagnostico)
             ) +
-          '</select></div>' +
-        '<div class="campo"><label>¿Qué sugiere hacer?' +
-          '<span class="ayuda">Es su opinión técnica; la decisión final es del administrador</span></label>' +
-          '<select data-campo="sugerencia_tecnico">' +
-            opcionesDe(estado.listas.sugerencia, l.sugerencia_tecnico) +
           '</select></div>' +
         '<div class="campo ancho"><label>Detalle de lo que encontró' +
           '<span class="ayuda">Esto es lo que se va a leer dentro de seis meses</span></label>' +
@@ -1996,13 +2022,18 @@ function tarjetaResolucion(p) {
     '<div class="unidad" data-linea="' + escapar(l.id_linea) + '">' +
       cabeceraUnidad(p) +
       '<div class="nota-unidad">' +
-        '<b>El técnico dice:</b> ' + escapar(l.diagnostico) +
-        (l.sugerencia_tecnico ? ' · sugiere <b>' + escapar(l.sugerencia_tecnico) + '</b>' : '') +
+        '<b>El técnico reporta:</b> ' + escapar(l.diagnostico) +
         (l.detalle_tecnico ? '<br>' + escapar(l.detalle_tecnico) : '') +
+        /* Solo en filas viejas: la sugerencia del técnico se dejó de pedir.
+           Se sigue mostrando para no perder lo que ya estaba escrito. */
+        (l.sugerencia_tecnico
+          ? '<br><span class="sub">Sugerencia anotada antes: ' +
+            escapar(l.sugerencia_tecnico) + '</span>'
+          : '') +
       '</div>' +
       '<div class="rejilla dos">' +
         '<div class="campo"><label>Resolución <span class="req">*</span>' +
-          '<span class="ayuda">Puede coincidir con la sugerencia o no. Ambas quedan registradas</span></label>' +
+          '<span class="ayuda">La decisión comercial: qué se hace con la unidad</span></label>' +
           '<select data-campo="resolucion">' +
             opcionesDe(estado.listas.resolucion, l.resolucion) +
           '</select></div>' +
