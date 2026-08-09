@@ -1622,7 +1622,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase3-build-3';
+var BUILD_ESPERADO = 'fase3-build-4';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -2053,15 +2053,43 @@ function tarjetaResolucion(p) {
    FASE 3 — las dos tarjetas de cierre
    -------------------------------------------------------------------------- */
 
-/** Lo que decidió el administrador, en una línea, para no repetir la ficha. */
+/**
+ * La historia de la unidad, en el orden en que pasó: primero lo que encontró
+ * el técnico, después lo que se decidió.
+ *
+ * Cada comentario va pegado a su paso. Antes la nota de la resolución caía al
+ * final, debajo del diagnóstico, y parecía una aclaración del técnico cuando
+ * en realidad era del administrador.
+ */
 function notaResolucion(l) {
-  return '<div class="nota-unidad">' +
-    '<b>Resolución:</b> ' + escapar(l.resolucion) +
-    (l.resuelto_por ? ' · ' + escapar(l.resuelto_por) : '') +
-    (l.diagnostico ? '<br><b>Diagnóstico:</b> ' + escapar(l.diagnostico) : '') +
-    (l.detalle_tecnico ? ' · ' + escapar(l.detalle_tecnico) : '') +
-    (l.notas_linea ? '<br>' + escapar(l.notas_linea) : '') +
-  '</div>';
+  var bloques = [];
+
+  if (l.diagnostico) {
+    bloques.push(
+      '<div><b>Diagnóstico:</b> ' + escapar(l.diagnostico) +
+      (l.detalle_tecnico
+        ? '<div class="sub" style="margin-top:2px">' + escapar(l.detalle_tecnico) + '</div>'
+        : '') +
+      /* Solo en filas viejas: la sugerencia del técnico se dejó de pedir. */
+      (l.sugerencia_tecnico
+        ? '<div class="sub" style="margin-top:2px">Sugerencia anotada antes: ' +
+          escapar(l.sugerencia_tecnico) + '</div>'
+        : '') +
+      '</div>');
+  }
+
+  if (l.resolucion) {
+    bloques.push(
+      '<div style="margin-top:8px"><b>Resolución:</b> ' + escapar(l.resolucion) +
+      (l.resuelto_por ? ' · ' + escapar(l.resuelto_por) : '') +
+      (l.notas_linea
+        ? '<div class="sub" style="margin-top:2px">' + escapar(l.notas_linea) + '</div>'
+        : '') +
+      '</div>');
+  }
+
+  if (!bloques.length) return '';
+  return '<div class="nota-unidad">' + bloques.join('') + '</div>';
 }
 
 function opcionesTipoMovimiento(escogido) {
