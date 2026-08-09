@@ -966,6 +966,7 @@ async function alRecibirCredencial(respuesta) {
     document.getElementById('rotuloEmpresa').textContent = estado.empresa.nombre_comercial;
   }
 
+  precargarLogos();
   armarMenu();
   prepararFormulario();
 }
@@ -1956,7 +1957,7 @@ async function imprimirDesdeBusqueda(idGarantia) {
   var r = await api('obtener', { id_garantia: idGarantia });
   if (!r.ok) { alert('No se pudo cargar la boleta.'); return; }
   construirImpresion(r.boleta, r.articulos);
-  window.print();
+  await imprimirArea();
 }
 
 /* ==========================================================================
@@ -2106,10 +2107,63 @@ function construirImpresion(b, lineas) {
     '</div>';
 }
 
-function imprimirBoleta() {
+/* --------------------------------------------------------------------------
+   IMPRIMIR SIN QUE FALTE EL LOGO
+
+   El síntoma era "hay que darle dos veces": la primera salía sin logo y la
+   segunda con logo. La causa es de tiempos, no de la imagen. `window.print()`
+   congela la página tal como está en ese instante, y el logo se acababa de
+   insertar en el documento: el navegador todavía no lo había descargado, así
+   que imprimía el hueco. En el segundo intento ya estaba en memoria.
+
+   Se arregla por los dos lados: los logos se piden apenas se entra a la
+   aplicación, y antes de imprimir se espera a que las imágenes estén listas.
+   -------------------------------------------------------------------------- */
+
+/** Se piden los logos al entrar, para que cuando toque imprimir ya estén. */
+function precargarLogos() {
+  var mapa = estado.emisores || {};
+  var vistos = {};
+  for (var k in mapa) {
+    if (!mapa.hasOwnProperty(k)) continue;
+    var url = mapa[k].logo_url;
+    if (!url || vistos[url]) continue;
+    vistos[url] = true;
+    var img = new Image();
+    img.src = url;
+  }
+}
+
+/** Espera a que las imágenes del área de impresión estén dibujables. */
+function esperarImagenes(contenedor) {
+  var imgs = Array.prototype.slice.call(contenedor.querySelectorAll('img'));
+  if (!imgs.length) return Promise.resolve();
+
+  return Promise.all(imgs.map(function (img) {
+    // naturalWidth > 0 es la prueba de que de verdad se descargó: `complete`
+    // por sí solo también es true cuando la imagen falló.
+    if (img.complete && img.naturalWidth > 0) {
+      return img.decode ? img.decode().catch(function () {}) : Promise.resolve();
+    }
+    return new Promise(function (listo) {
+      img.addEventListener('load',  listo, { once: true });
+      img.addEventListener('error', listo, { once: true });
+      // Nunca dejar la impresión colgada por una imagen que no llega:
+      // más vale una boleta sin logo que un botón que no responde.
+      setTimeout(listo, 3000);
+    });
+  }));
+}
+
+async function imprimirArea() {
+  await esperarImagenes(document.getElementById('areaImpresion'));
+  window.print();
+}
+
+async function imprimirBoleta() {
   if (!estado.ultimaBoleta) return;
   construirImpresion(estado.ultimaBoleta.boleta, estado.ultimaBoleta.articulos);
-  window.print();
+  await imprimirArea();
 }
 
 /* ==========================================================================
