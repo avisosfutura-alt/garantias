@@ -167,6 +167,13 @@ input,select,textarea{
   width:100%;padding:11px 12px;border:1px solid var(--gris-linea);border-radius:8px;
   background:var(--campo);color:var(--texto);
 }
+/* La regla de arriba se escribio para campos de texto: a una casilla le
+   ponia ancho 100% y relleno, y en una fila flexible se comia el espacio del
+   texto de al lado. Las casillas y los redondeles no son campos de texto. */
+input[type=checkbox],input[type=radio]{
+  width:16px;height:16px;min-width:16px;flex:none;padding:0;margin:0;
+  accent-color:var(--azul);cursor:pointer;
+}
 input::placeholder,textarea::placeholder{color:#69739a}
 /* el calendario nativo viene en negro sobre negro si no se invierte */
 input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1) opacity(.7)}
@@ -468,11 +475,24 @@ table.lineas tr:last-child td{border-bottom:0}
 .marbete.si{color:var(--verde);border-color:var(--verde)}
 .marbete.no{color:var(--coral);border-color:var(--coral)}
 .marbete.oro{color:var(--oro);border-color:var(--oro)}
-.fila-valor{display:flex;align-items:center;gap:10px;padding:7px 0;
+.fila-valor{display:flex;align-items:baseline;gap:10px;padding:8px 0;
   border-bottom:1px solid var(--gris-linea)}
 .fila-valor:last-child{border-bottom:0}
-.fila-valor .nombre{flex:1;font-size:.86rem;color:var(--texto)}
-.fila-valor .usos{font-size:.76rem;color:var(--gris)}
+.fila-valor input[type=checkbox]{align-self:center}
+.fila-valor .nombre{flex:1;min-width:0;font-size:.88rem;color:var(--texto)}
+.fila-valor .atributo{display:block;font-size:.75rem;color:var(--gris);margin-top:1px}
+.fila-valor .usos{flex:none;font-size:.76rem;color:var(--gris);white-space:nowrap}
+.fila-valor.apagada .nombre{color:var(--gris)}
+/* Los renglones de casilla + texto: la casilla no crece, el texto sí. */
+.linea-casilla{display:flex;gap:7px;align-items:center;font-size:.85rem;
+  color:var(--texto);cursor:pointer;white-space:nowrap}
+.cfg-agregar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px;
+  padding-top:12px;border-top:1px solid var(--gris-linea)}
+.cfg-agregar input[type=text]{flex:1;min-width:200px}
+@media(max-width:560px){
+  .fila-valor{flex-wrap:wrap}
+  .cfg-agregar input[type=text]{min-width:100%}
+}
 #areaImpresion{display:none}
 
 @media print{
@@ -1719,7 +1739,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase4-build-2';
+var BUILD_ESPERADO = 'fase4-build-3';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -2771,9 +2791,9 @@ function formSucursal(su, id) {
     '</div>' +
 
     '<div class="acciones" style="margin-top:12px;align-items:center">' +
-      '<label style="display:flex;gap:6px;align-items:center;font-size:.85rem">' +
+      '<label class="linea-casilla">' +
         '<input type="checkbox" data-cfg="activa"' + (su.activa ? ' checked' : '') + '> Activa</label>' +
-      '<label style="display:flex;gap:6px;align-items:center;font-size:.85rem">' +
+      '<label class="linea-casilla">' +
         '<input type="checkbox" data-cfg="por_defecto"' + (su.por_defecto ? ' checked' : '') +
         '> Predeterminada</label>' +
       '<button class="btn primario pequeno" onclick="guardarSucursal(this)">' +
@@ -2836,7 +2856,7 @@ function formUsuario(u) {
         '<select data-cfg="rol">' + opcionesDe(cfg.roles, u.rol) + '</select></div>' +
     '</div>' +
     '<div class="acciones" style="margin-top:12px;align-items:center">' +
-      '<label style="display:flex;gap:6px;align-items:center;font-size:.85rem">' +
+      '<label class="linea-casilla">' +
         '<input type="checkbox" data-cfg="activo"' + (u.activo ? ' checked' : '') +
         '> Puede entrar al sistema</label>' +
       '<button class="btn primario pequeno" onclick="guardarUsuario(this)">' +
@@ -2878,24 +2898,25 @@ function vistaListas() {
         '<span class="sub">El número dice en cuántas unidades ya se usó. ' +
           'Un valor con usos no debería desaparecer del historial.</span>' +
         L.valores.map(function (v) {
-          return '<div class="fila-valor">' +
+          var rot = atributoRotulo(L.lista, v.atributo);
+          return '<label class="fila-valor' + (v.activo ? '' : ' apagada') + '">' +
             '<input type="checkbox" ' + (v.activo ? 'checked ' : '') +
               'onchange="cambiarValorLista(this,\'' + escapar(L.lista) + '\',\'' +
               escapar(v.valor) + '\')">' +
             '<span class="nombre">' + escapar(v.valor) +
-              (v.atributo ? ' <span class="usos">· ' + escapar(atributoRotulo(L.lista, v.atributo)) +
-                '</span>' : '') + '</span>' +
+              (rot ? '<span class="atributo">' + escapar(rot) + '</span>' : '') +
+            '</span>' +
             '<span class="usos">' + v.usos +
               (v.usos === 1 ? ' uso' : ' usos') + '</span>' +
-          '</div>';
+          '</label>';
         }).join('') +
-        '<div class="acciones" style="margin-top:12px">' +
-          '<input placeholder="Agregar un valor nuevo" data-nuevo style="flex:1;min-width:180px">' +
+        '<div class="cfg-agregar">' +
+          '<input type="text" placeholder="Agregar un valor nuevo" data-nuevo>' +
           (L.lista === 'tipo_movimiento'
-            ? '<label style="display:flex;gap:6px;align-items:center;font-size:.82rem">' +
+            ? '<label class="linea-casilla">' +
               '<input type="checkbox" data-atributo> Lleva referencia</label>'
             : L.lista === 'diagnostico'
-              ? '<label style="display:flex;gap:6px;align-items:center;font-size:.82rem">' +
+              ? '<label class="linea-casilla">' +
                 '<input type="checkbox" data-atributo> Deja la unidad en el taller</label>'
               : '') +
           '<button class="btn secundario pequeno" onclick="agregarValorLista(this)">Agregar</button>' +
