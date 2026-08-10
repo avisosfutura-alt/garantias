@@ -450,6 +450,29 @@ table.lineas tr:last-child td{border-bottom:0}
   .tablero-dos{grid-template-columns:1fr}
   .barra-fila{grid-template-columns:minmax(90px,40%) 1fr auto}
 }
+/* --- Configuración ------------------------------------------------------ */
+.pestanas{display:flex;gap:2px;flex-wrap:wrap;margin-bottom:16px;border-bottom:1px solid var(--gris-linea)}
+.pestanas button{
+  background:none;border:0;border-bottom:2px solid transparent;color:var(--gris);
+  padding:9px 14px;font:inherit;font-size:.88rem;cursor:pointer;white-space:nowrap}
+.pestanas button.activa{color:#fff;border-bottom-color:var(--oro);font-weight:600}
+.tarjeta-cfg{background:var(--panel);border:1px solid var(--gris-linea);border-radius:12px;
+  padding:16px;margin-bottom:14px}
+.tarjeta-cfg h3{margin:0 0 4px;font-size:.95rem;color:var(--texto)}
+.tarjeta-cfg .sub{display:block;font-size:.78rem;color:var(--gris);margin-bottom:12px}
+.tarjeta-cfg.inactiva{opacity:.6;border-style:dashed}
+.cfg-encabezado{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;
+  flex-wrap:wrap;margin-bottom:10px}
+.marbete{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;padding:2px 8px;
+  border-radius:99px;border:1px solid var(--gris-linea);color:var(--gris)}
+.marbete.si{color:var(--verde);border-color:var(--verde)}
+.marbete.no{color:var(--coral);border-color:var(--coral)}
+.marbete.oro{color:var(--oro);border-color:var(--oro)}
+.fila-valor{display:flex;align-items:center;gap:10px;padding:7px 0;
+  border-bottom:1px solid var(--gris-linea)}
+.fila-valor:last-child{border-bottom:0}
+.fila-valor .nombre{flex:1;font-size:.86rem;color:var(--texto)}
+.fila-valor .usos{font-size:.76rem;color:var(--gris)}
 #areaImpresion{display:none}
 
 @media print{
@@ -843,6 +866,19 @@ table.lineas tr:last-child td{border-bottom:0}
     </section>
 
     <!-- ---------------------------------------------------------------
+         CONFIGURACIÓN
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaConfig">
+      <h1>Configuración</h1>
+      <p class="subtitulo">
+        Lo que antes había que cambiar en el código. Todo cambio queda en la
+        bitácora con su valor anterior.
+      </p>
+      <div class="pestanas" id="pestanasConfig"></div>
+      <div id="cajaConfig"></div>
+    </section>
+
+    <!-- ---------------------------------------------------------------
          BUSCAR
          --------------------------------------------------------------- -->
     <section class="pantalla" id="pantallaBuscar">
@@ -1061,7 +1097,9 @@ async function alRecibirCredencial(respuesta) {
 
   document.getElementById('nombreUsuario').textContent = estado.usuario.nombre;
   document.getElementById('rolUsuario').textContent    = '· ' + estado.usuario.rol;
-  if (estado.empresa.nombre_comercial) {
+  if (estado.empresa.subtitulo) {
+    document.getElementById('rotuloEmpresa').textContent = estado.empresa.subtitulo;
+  } else if (estado.empresa.nombre_comercial) {
     document.getElementById('rotuloEmpresa').textContent = estado.empresa.nombre_comercial;
   }
 
@@ -1125,6 +1163,9 @@ function armarMenu() {
   if (estado.permisos.verTablero) {
     opciones.push({ id:'Tablero', rotulo:'Tablero' });
   }
+  if (estado.permisos.configurar) {
+    opciones.push({ id:'Config', rotulo:'Configuración' });
+  }
 
   var menu = document.getElementById('menu');
   menu.innerHTML = '';
@@ -1141,7 +1182,8 @@ function armarMenu() {
 }
 
 function irA(id) {
-  ['Recibir', 'Taller', 'Resoluciones', 'NC', 'Salida', 'Buscar', 'Tablero', 'Guardada'].forEach(function (p) {
+  ['Recibir', 'Taller', 'Resoluciones', 'NC', 'Salida', 'Buscar', 'Tablero',
+   'Config', 'Guardada'].forEach(function (p) {
     var el = document.getElementById('pantalla' + p);
     if (el) el.classList.toggle('visible', p === id);
   });
@@ -1157,6 +1199,7 @@ function irA(id) {
   if (id === 'NC')           cargarCola('nc');
   if (id === 'Salida')       cargarCola('salida');
   if (id === 'Tablero')      cargarTablero();
+  if (id === 'Config')       cargarConfig();
 }
 
 /* ==========================================================================
@@ -1676,7 +1719,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase3-build-7';
+var BUILD_ESPERADO = 'fase4-build-1';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -2570,6 +2613,391 @@ function tablaRanking(titulo, filas, desde) {
 }
 
 /* ==========================================================================
+   CONFIGURACIÓN
+
+   Cuatro pestañas sobre el mismo paquete de datos, que se pide una vez al
+   entrar. Después de cada guardado se vuelve a pedir: así lo que se ve en
+   pantalla es siempre lo que quedó escrito, no lo que se creyó escribir.
+   ========================================================================== */
+var cfg = null;
+var pestanaConfig = 'sucursales';
+
+var PESTANAS_CFG = [
+  { id: 'sucursales', rotulo: 'Sucursales y empresas' },
+  { id: 'usuarios',   rotulo: 'Usuarios' },
+  { id: 'listas',     rotulo: 'Listas' },
+  { id: 'ajustes',    rotulo: 'Ajustes' }
+];
+
+async function cargarConfig(pestana) {
+  if (pestana) pestanaConfig = pestana;
+
+  var caja = document.getElementById('cajaConfig');
+  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Cargando…</div></div>';
+
+  var r = await api('configuracion', {});
+  if (!r.ok) {
+    caja.innerHTML = '<div class="aviso error"><b>No se pudo cargar</b>' +
+      (r.errores || [r.detalle || r.error]).join(' ') + '</div>';
+    return;
+  }
+  cfg = r;
+
+  var barra = document.getElementById('pestanasConfig');
+  barra.innerHTML = PESTANAS_CFG.map(function (p) {
+    return '<button class="' + (p.id === pestanaConfig ? 'activa' : '') + '" ' +
+           'onclick="cargarConfig(\'' + p.id + '\')">' + escapar(p.rotulo) + '</button>';
+  }).join('');
+
+  caja.innerHTML =
+      pestanaConfig === 'sucursales' ? vistaSucursales()
+    : pestanaConfig === 'usuarios'   ? vistaUsuarios()
+    : pestanaConfig === 'listas'     ? vistaListas()
+    :                                  vistaAjustes();
+  window.scrollTo(0, 0);
+}
+
+function avisoCfg(caja, tipo, texto) {
+  var el = caja.querySelector('[data-aviso-cfg]');
+  if (!el) return;
+  el.style.color = tipo === 'error' ? 'var(--rojo)' : 'var(--verde)';
+  el.textContent = texto;
+}
+
+/** Lee los [data-cfg] de un contenedor. Las casillas van como Si/No. */
+function leerCampos(caja) {
+  var datos = {};
+  Array.prototype.forEach.call(caja.querySelectorAll('[data-cfg]'), function (el) {
+    datos[el.dataset.cfg] = (el.type === 'checkbox')
+      ? (el.checked ? 'Si' : 'No')
+      : String(el.value).trim();
+  });
+  return datos;
+}
+
+async function enviarCfg(boton, accion, datos, rotuloOk) {
+  var caja = boton.closest('[data-bloque]');
+  var previo = boton.textContent;
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+  avisoCfg(caja, 'ok', '');
+
+  var r = await api(accion, datos);
+
+  if (!r.ok) {
+    boton.disabled = false;
+    boton.textContent = previo;
+    avisoCfg(caja, 'error', (r.errores || [r.detalle || r.error]).join(' '));
+    return false;
+  }
+  avisoCfg(caja, 'ok', rotuloOk);
+  setTimeout(function () { cargarConfig(); }, 700);
+  return true;
+}
+
+/* --------------------------------------------------------------------------
+   SUCURSALES
+   -------------------------------------------------------------------------- */
+function vistaSucursales() {
+  return '<p class="subtitulo">Cada sucursal firma con su empresa. Renombrar es ' +
+    'seguro: el nombre viejo se guarda solo como alias y las boletas ya emitidas ' +
+    'lo siguen encontrando.</p>' +
+    cfg.sucursales.map(fichaSucursal).join('') +
+    '<div class="acciones"><button class="btn secundario pequeno" ' +
+      'onclick="agregarSucursal()">+ Agregar sucursal</button></div>' +
+    '<div id="sucursalNueva"></div>';
+}
+
+function fichaSucursal(su) {
+  return formSucursal(su, su.sucursal);
+}
+
+function formSucursal(su, id) {
+  su = su || { activa: true, rotulo_cedula: 'Cédula jurídica', por_defecto: false,
+               boletas: 0, terminos_garantia: '' };
+  var nueva = !id;
+
+  return '<div class="tarjeta-cfg ' + (!nueva && !su.activa ? 'inactiva' : '') + '" ' +
+      'data-bloque data-anterior="' + escapar(id || '') + '">' +
+    '<div class="cfg-encabezado">' +
+      '<h3>' + (nueva ? 'Sucursal nueva' : escapar(su.sucursal)) + '</h3>' +
+      '<div>' +
+        (su.por_defecto ? '<span class="marbete oro">Predeterminada</span> ' : '') +
+        (nueva ? '' : '<span class="marbete ' + (su.activa ? 'si' : 'no') + '">' +
+          (su.activa ? 'Activa' : 'Inactiva') + '</span>') +
+      '</div>' +
+    '</div>' +
+
+    (!nueva && su.boletas
+      ? '<div class="aviso alerta" style="text-align:left;margin-bottom:12px">' +
+        '<b>' + su.boletas + (su.boletas === 1 ? ' boleta ya emitida' : ' boletas ya emitidas') +
+        ' salieron firmadas por esta sucursal.</b>' +
+        'Si cambia la razón social o la cédula, así se van a reimprimir de ahora ' +
+        'en adelante — incluidas las viejas. El nombre sí se puede cambiar sin ' +
+        'riesgo: el viejo queda como alias.</div>'
+      : '') +
+
+    '<div class="rejilla dos">' +
+      '<div class="campo"><label>Nombre de la sucursal <span class="req">*</span>' +
+        '<span class="ayuda">Es lo que se escoge en el formulario</span></label>' +
+        '<input data-cfg="sucursal" value="' + escapar(su.sucursal || '') + '"></div>' +
+      '<div class="campo"><label>Razón social <span class="req">*</span>' +
+        '<span class="ayuda">La que firma la boleta impresa</span></label>' +
+        '<input data-cfg="razon_social" value="' + escapar(su.razon_social || '') + '"></div>' +
+      '<div class="campo"><label>Rótulo de la identificación' +
+        '<span class="ayuda">"Cédula jurídica" para sociedades, "Cédula" para persona física</span></label>' +
+        '<input data-cfg="rotulo_cedula" value="' + escapar(su.rotulo_cedula || '') + '"></div>' +
+      '<div class="campo"><label>Número de identificación</label>' +
+        '<input data-cfg="cedula" value="' + escapar(su.cedula || '') + '"></div>' +
+      '<div class="campo"><label>Dirección</label>' +
+        '<input data-cfg="direccion" value="' + escapar(su.direccion || '') + '"></div>' +
+      '<div class="campo"><label>Teléfono' +
+        '<span class="ayuda">Si queda vacío no se imprime</span></label>' +
+        '<input data-cfg="telefono" value="' + escapar(su.telefono || '') + '"></div>' +
+      '<div class="campo"><label>Correo' +
+        '<span class="ayuda">Si queda vacío no se imprime</span></label>' +
+        '<input data-cfg="correo" value="' + escapar(su.correo || '') + '"></div>' +
+      '<div class="campo"><label>Archivo del logo' +
+        '<span class="ayuda">El archivo tiene que estar subido junto al index.html</span></label>' +
+        '<input data-cfg="logo_url" value="' + escapar(su.logo_url || '') + '"></div>' +
+      '<div class="campo ancho"><label>Condiciones de la garantía' +
+        '<span class="ayuda">Un renglón por condición. Se imprimen solo en boletas de cliente. ' +
+          'Vacío = no sale el bloque</span></label>' +
+        '<textarea data-cfg="terminos_garantia" rows="5">' +
+          escapar(su.terminos_garantia || '') + '</textarea></div>' +
+      '<div class="campo ancho"><label>Nombres anteriores (alias)' +
+        '<span class="ayuda">Separados por coma. Se llenan solos al renombrar</span></label>' +
+        '<input data-cfg="alias" value="' + escapar(su.alias || '') + '"></div>' +
+    '</div>' +
+
+    '<div class="acciones" style="margin-top:12px;align-items:center">' +
+      '<label style="display:flex;gap:6px;align-items:center;font-size:.85rem">' +
+        '<input type="checkbox" data-cfg="activa"' + (su.activa ? ' checked' : '') + '> Activa</label>' +
+      '<label style="display:flex;gap:6px;align-items:center;font-size:.85rem">' +
+        '<input type="checkbox" data-cfg="por_defecto"' + (su.por_defecto ? ' checked' : '') +
+        '> Predeterminada</label>' +
+      '<button class="btn primario pequeno" onclick="guardarSucursal(this)">' +
+        (nueva ? 'Crear sucursal' : 'Guardar') + '</button>' +
+      '<span class="sub" data-aviso-cfg></span>' +
+    '</div>' +
+  '</div>';
+}
+
+function agregarSucursal() {
+  document.getElementById('sucursalNueva').innerHTML = formSucursal(null, '');
+  document.getElementById('sucursalNueva').scrollIntoView({ behavior: 'smooth' });
+}
+
+function guardarSucursal(boton) {
+  var caja = boton.closest('[data-bloque]');
+  var datos = leerCampos(caja);
+  datos.sucursal_anterior = caja.dataset.anterior || '';
+  enviarCfg(boton, 'guardarEmisor', datos, 'Guardado');
+}
+
+/* --------------------------------------------------------------------------
+   USUARIOS
+   -------------------------------------------------------------------------- */
+function vistaUsuarios() {
+  return '<p class="subtitulo">Dar de baja pone al usuario en inactivo; nunca se ' +
+    'borra la fila. Si se borrara, se perdería el rastro de quién registró cada ' +
+    'boleta.</p>' +
+    cfg.usuarios.map(function (u) { return formUsuario(u); }).join('') +
+    '<div class="acciones"><button class="btn secundario pequeno" ' +
+      'onclick="agregarUsuario()">+ Agregar usuario</button></div>' +
+    '<div id="usuarioNuevo"></div>';
+}
+
+function formUsuario(u) {
+  u = u || { activo: true, rol: 'Bodega' };
+  var nuevo = !u.correo;
+  var soyYo = (u.correo && cfg.yo &&
+               u.correo.toLowerCase() === String(cfg.yo).toLowerCase());
+
+  return '<div class="tarjeta-cfg ' + (!nuevo && !u.activo ? 'inactiva' : '') + '" data-bloque>' +
+    '<div class="cfg-encabezado">' +
+      '<h3>' + (nuevo ? 'Usuario nuevo' : escapar(u.nombre || u.correo)) + '</h3>' +
+      '<div>' +
+        (soyYo ? '<span class="marbete oro">Usted</span> ' : '') +
+        (nuevo ? '' : '<span class="marbete ' + (u.activo ? 'si' : 'no') + '">' +
+          (u.activo ? 'Activo' : 'Inactivo') + '</span>') +
+      '</div>' +
+    '</div>' +
+    '<div class="rejilla tres">' +
+      '<div class="campo"><label>Correo de Google <span class="req">*</span>' +
+        '<span class="ayuda">' + (nuevo ? 'Con el que inicia sesión'
+                                        : 'No se puede cambiar') + '</span></label>' +
+        '<input data-cfg="correo" value="' + escapar(u.correo || '') + '"' +
+          (nuevo ? '' : ' readonly style="opacity:.65"') + '></div>' +
+      '<div class="campo"><label>Nombre <span class="req">*</span>' +
+        '<span class="ayuda">El que sale impreso en la boleta</span></label>' +
+        '<input data-cfg="nombre" value="' + escapar(u.nombre || '') + '"></div>' +
+      '<div class="campo"><label>Rol</label>' +
+        '<select data-cfg="rol">' + opcionesDe(cfg.roles, u.rol) + '</select></div>' +
+    '</div>' +
+    '<div class="acciones" style="margin-top:12px;align-items:center">' +
+      '<label style="display:flex;gap:6px;align-items:center;font-size:.85rem">' +
+        '<input type="checkbox" data-cfg="activo"' + (u.activo ? ' checked' : '') +
+        '> Puede entrar al sistema</label>' +
+      '<button class="btn primario pequeno" onclick="guardarUsuario(this)">' +
+        (nuevo ? 'Dar de alta' : 'Guardar') + '</button>' +
+      '<span class="sub" data-aviso-cfg></span>' +
+    '</div>' +
+  '</div>';
+}
+
+function agregarUsuario() {
+  document.getElementById('usuarioNuevo').innerHTML = formUsuario(null);
+  document.getElementById('usuarioNuevo').scrollIntoView({ behavior: 'smooth' });
+}
+
+function guardarUsuario(boton) {
+  enviarCfg(boton, 'guardarUsuario', leerCampos(boton.closest('[data-bloque]')), 'Guardado');
+}
+
+/* --------------------------------------------------------------------------
+   LISTAS
+
+   Solo activar, desactivar y agregar. Ni borrar ni renombrar: las líneas que
+   ya tienen ese valor quedarían con algo que el sistema no reconoce.
+   -------------------------------------------------------------------------- */
+var ROTULO_LISTA = {
+  diagnostico:     'Diagnósticos del técnico',
+  resolucion:      'Resoluciones del administrador',
+  tipo_movimiento: 'Tipos de movimiento de salida'
+};
+
+function vistaListas() {
+  return '<p class="subtitulo">Se puede agregar valores y ocultar los que ya no se ' +
+    'usan. <b>No se pueden borrar ni renombrar</b>: las unidades que ya los tienen ' +
+    'quedarían con un valor que el sistema no reconoce, y se saldrían de las colas ' +
+    'sin que nada lo avise.</p>' +
+    cfg.listas.map(function (L) {
+      return '<div class="tarjeta-cfg" data-bloque data-lista="' + escapar(L.lista) + '">' +
+        '<h3>' + escapar(ROTULO_LISTA[L.lista] || L.lista) + '</h3>' +
+        '<span class="sub">El número dice en cuántas unidades ya se usó. ' +
+          'Un valor con usos no debería desaparecer del historial.</span>' +
+        L.valores.map(function (v) {
+          return '<div class="fila-valor">' +
+            '<input type="checkbox" ' + (v.activo ? 'checked ' : '') +
+              'onchange="cambiarValorLista(this,\'' + escapar(L.lista) + '\',\'' +
+              escapar(v.valor) + '\')">' +
+            '<span class="nombre">' + escapar(v.valor) +
+              (v.atributo ? ' <span class="usos">· ' + escapar(atributoRotulo(L.lista, v.atributo)) +
+                '</span>' : '') + '</span>' +
+            '<span class="usos">' + v.usos +
+              (v.usos === 1 ? ' uso' : ' usos') + '</span>' +
+          '</div>';
+        }).join('') +
+        '<div class="acciones" style="margin-top:12px">' +
+          '<input placeholder="Agregar un valor nuevo" data-nuevo style="flex:1;min-width:180px">' +
+          (L.lista === 'tipo_movimiento'
+            ? '<label style="display:flex;gap:6px;align-items:center;font-size:.82rem">' +
+              '<input type="checkbox" data-atributo> Lleva referencia</label>'
+            : L.lista === 'diagnostico'
+              ? '<label style="display:flex;gap:6px;align-items:center;font-size:.82rem">' +
+                '<input type="checkbox" data-atributo> Deja la unidad en el taller</label>'
+              : '') +
+          '<button class="btn secundario pequeno" onclick="agregarValorLista(this)">Agregar</button>' +
+          '<span class="sub" data-aviso-cfg></span>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+}
+
+function atributoRotulo(lista, atributo) {
+  if (lista === 'tipo_movimiento') return atributo === 'referencia' ? 'lleva referencia' : '';
+  if (lista === 'diagnostico') return atributo === 'abierto' ? 'sigue en el taller' : 'pasa a resolución';
+  return atributo;
+}
+
+function cambiarValorLista(casilla, lista, valor) {
+  var boton = casilla.closest('[data-bloque]').querySelector('.btn');
+  enviarCfg(boton, 'guardarLista',
+            { lista: lista, valor: valor, activo: casilla.checked ? 'Si' : 'No' },
+            casilla.checked ? 'Activado' : 'Desactivado');
+}
+
+function agregarValorLista(boton) {
+  var caja = boton.closest('[data-bloque]');
+  var lista = caja.dataset.lista;
+  var campo = caja.querySelector('[data-nuevo]');
+  var marca = caja.querySelector('[data-atributo]');
+
+  if (!campo.value.trim()) { avisoCfg(caja, 'error', 'Escriba el valor nuevo.'); return; }
+
+  var atributo = '';
+  if (marca && marca.checked) atributo = (lista === 'tipo_movimiento') ? 'referencia' : 'abierto';
+  else if (lista === 'diagnostico') atributo = 'cierra';
+
+  enviarCfg(boton, 'guardarLista',
+            { lista: lista, valor: campo.value.trim(), activo: 'Si', atributo: atributo },
+            'Agregado');
+}
+
+/* --------------------------------------------------------------------------
+   AJUSTES
+   -------------------------------------------------------------------------- */
+function vistaAjustes() {
+  var a = cfg.ajustes;
+
+  function campo(clave, rotulo, ayuda, tipo, ancho) {
+    return '<div class="campo' + (ancho ? ' ancho' : '') + '"><label>' + escapar(rotulo) +
+      '<span class="ayuda">' + escapar(ayuda) + '</span></label>' +
+      (tipo === 'texto-largo'
+        ? '<textarea data-cfg="' + clave + '" rows="4">' + escapar(a[clave] || '') + '</textarea>'
+        : '<input data-cfg="' + clave + '"' + (tipo === 'numero' ? ' type="number" min="1"' : '') +
+          ' value="' + escapar(a[clave] === undefined ? '' : a[clave]) + '">') +
+    '</div>';
+  }
+
+  return '<div class="tarjeta-cfg" data-bloque>' +
+    '<h3>Encabezado de la aplicación</h3>' +
+    '<span class="sub">Lo que se lee arriba, en la barra.</span>' +
+    '<div class="rejilla dos">' +
+      campo('nombre_comercial', 'Título', 'Hoy: Gestión de Garantías') +
+      campo('subtitulo', 'Subtítulo', 'El renglón pequeño de abajo') +
+    '</div>' +
+
+    '<h3 style="margin-top:20px">Plazos del semáforo</h3>' +
+    '<span class="sub">En días naturales. Tienen que ir en escalera: atención &lt; ' +
+      'atrasado &lt; abandono. Al revés, los colores se contradicen entre sí.</span>' +
+    '<div class="rejilla tres">' +
+      campo('plazo_atencion', 'Pasa a amarillo', 'Días desde que entró', 'numero') +
+      campo('plazo_atrasado', 'Pasa a rojo', 'Días desde que entró', 'numero') +
+      campo('plazo_abandono', 'Permite dar por abandonado', 'Días desde el aviso al cliente', 'numero') +
+    '</div>' +
+
+    '<h3 style="margin-top:20px">Textos impresos</h3>' +
+    '<span class="sub">Las condiciones de la garantía van por empresa, en la pestaña ' +
+      'de sucursales. Aquí queda lo que es igual para todas.</span>' +
+    '<div class="rejilla dos">' +
+      campo('pie_legal', 'Pie de las impresiones', 'Un renglón corto al final de la hoja',
+            'texto-largo', true) +
+      campo('condiciones_revision_interna', 'Condiciones de revisión interna',
+            'Un renglón por condición. Solo en boletas REV-. Vacío = no se imprime',
+            'texto-largo', true) +
+    '</div>' +
+
+    '<h3 style="margin-top:20px">Otros</h3>' +
+    '<div class="rejilla tres">' +
+      campo('tope_busqueda', 'Tope del buscador', 'Máximo de resultados. Avisa al recortar', 'numero') +
+      campo('dias_retencion_respaldo', 'Días de respaldo', 'Cuándo se borran los respaldos viejos', 'numero') +
+      campo('carpeta_respaldos_nombre', 'Carpeta de respaldos', 'El nombre en Drive') +
+    '</div>' +
+
+    '<div class="acciones" style="margin-top:16px">' +
+      '<button class="btn primario pequeno" onclick="guardarAjustes(this)">Guardar ajustes</button>' +
+      '<span class="sub" data-aviso-cfg></span>' +
+    '</div>' +
+  '</div>';
+}
+
+function guardarAjustes(boton) {
+  enviarCfg(boton, 'guardarAjustes', leerCampos(boton.closest('[data-bloque]')), 'Guardado');
+}
+
+/* ==========================================================================
    BÚSQUEDA
    ========================================================================== */
 async function buscar() {
@@ -3039,15 +3467,12 @@ function construirImpresion(b, lineas) {
         '<div class="bloque"><h3>Observaciones</h3>' +
         escapar(b.observaciones) + '</div>' : '') +
 
-      /* Las condiciones solo van en la copia del cliente. En una revisión
-         interna no hay a quién informarle nada. Si no están definidas, el
-         bloque no se imprime y la boleta no queda con un hueco. */
-      (!esInterna && (e.terminos_garantia || []).length
-        ? '<div class="bloque condiciones"><h3>Condiciones de la garantía</h3>' +
-          '<ul>' + e.terminos_garantia.map(function (t) {
-            return '<li>' + escapar(t) + '</li>';
-          }).join('') + '</ul></div>'
-        : '') +
+      /* Las condiciones salen de la EMPRESA que firma, no de una sola lista:
+         son tres entidades legales distintas y cada una puede tener su texto.
+         La revisión interna lleva el suyo, si se definió: no hay cliente a
+         quién informarle, pero sí conviene dejar constancia interna.
+         Si no hay texto, el bloque no se imprime y no queda un hueco. */
+      bloqueCondiciones(esInterna, e) +
 
       '<div class="firmas">' +
         '<div><div class="linea"></div>Recibido por<br><b>' +
@@ -3212,6 +3637,19 @@ async function imprimirReporteTaller(idGarantia) {
   if (!r.ok) { alert('No se pudo cargar la boleta.'); return; }
   construirReporteTaller(r.boleta, r.articulos);
   await imprimirArea();
+}
+
+function bloqueCondiciones(esInterna, em) {
+  var lineas = esInterna
+    ? ((estado.empresa || {}).condiciones_revision_interna || [])
+    : ((em || {}).terminos_garantia || []);
+  if (!lineas.length) return '';
+
+  return '<div class="bloque condiciones"><h3>' +
+    (esInterna ? 'Condiciones de la revisión' : 'Condiciones de la garantía') +
+    '</h3><ul>' + lineas.map(function (t) {
+      return '<li>' + escapar(t) + '</li>';
+    }).join('') + '</ul></div>';
 }
 
 async function imprimirArea() {
