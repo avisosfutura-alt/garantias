@@ -830,6 +830,9 @@ table.lineas tr:last-child td{border-bottom:0}
         <button class="btn secundario" onclick="nuevaBoleta()">Registrar otra</button>
       </div>
       <div class="aviso info" style="margin-top:18px">
+        <b>El formulario ya quedó en blanco</b>
+        Se limpió al guardar, así que no hay riesgo de registrar otra boleta
+        con estos mismos datos por error.<br><br>
         La impresión es opcional: el cliente ya tiene su copia manual y el
         talonario conserva la suya. Imprima solo si necesita el archivo interno.
       </div>
@@ -1635,12 +1638,25 @@ async function guardar(evento) {
     function (el) { if (el.offsetParent === null) el.required = false; }
   );
 
+  var datos = leerFormulario();
+
+  /* Aviso -no bloqueo- si esto es idéntico a lo último que se registró.
+     Puede ser legítimo: dos boletas iguales el mismo día existen. Pero casi
+     siempre es que quedó texto de la anterior y nadie se dio cuenta. */
+  if (estado.ultimaHuella && huellaFormulario(datos) === estado.ultimaHuella) {
+    var seguir = confirm(
+      'Esto es idéntico a la boleta ' + (estado.ultimoNumero || 'anterior') +
+      ', que acaba de registrar.\n\n' +
+      '¿Seguro que es otra boleta distinta y no quedó texto de la anterior?');
+    if (!seguir) return;
+  }
+
   var boton = document.getElementById('btnGuardar');
   boton.disabled = true;
   boton.textContent = 'Guardando…';
   limpiarAviso('avisoRecibir');
 
-  var r = await api('crearBoleta', leerFormulario());
+  var r = await api('crearBoleta', datos);
 
   boton.disabled = false;
   boton.textContent = 'Guardar y registrar';
@@ -1656,18 +1672,48 @@ async function guardar(evento) {
   localStorage.removeItem(LLAVE_BORRADOR);
   estado.ultimaBoleta = r;
 
+  /* Huella de lo que se acaba de registrar, para poder avisar si alguien
+     manda exactamente lo mismo otra vez. */
+  estado.ultimaHuella = huellaFormulario(datos);
+  estado.ultimoNumero = r.boleta.id_garantia;
+
   document.getElementById('garantiaAsignada').textContent = r.boleta.id_garantia;
   document.getElementById('detalleGuardada').innerHTML = tarjetaResultado(r.boleta, r.articulos);
   construirImpresion(r.boleta, r.articulos);
   irA('Guardada');
+
+  /* El formulario se vacía AQUÍ, no al presionar "Registrar otra".
+   *
+   * Antes se quedaba lleno con lo de la boleta anterior, y quien volviera por
+   * el menú de arriba -en vez del botón- se encontraba el formulario con
+   * datos de otro cliente listos para guardarse de nuevo. La impresión no
+   * depende de esto: se arma con lo que respondió el servidor, no con lo que
+   * hay en pantalla. */
+  limpiarFormulario(false, true);
+}
+
+/** Resumen de lo digitado, para reconocer un envío repetido. */
+function huellaFormulario(datos) {
+  try {
+    return JSON.stringify({
+      t: datos.tipo_boleta, b: datos.num_boleta_manual,
+      c: datos.cliente_nombre, i: datos.cliente_identificacion,
+      o: datos.origen_tipo, d: datos.origen_detalle,
+      a: (datos.articulos || []).map(function (x) {
+        return [x.codigo_articulo, x.descripcion, x.serie_lote, x.dano_reportado].join('|');
+      })
+    });
+  } catch (e) { return ''; }
 }
 
 function nuevaBoleta() {
+  // Ya quedó limpio al guardar; se repite por si acaso y para dejar el cursor
+  // donde empieza a digitarse.
   limpiarFormulario(false);
   irA('Recibir');
 }
 
-function limpiarFormulario(confirmar) {
+function limpiarFormulario(confirmar, enSegundoPlano) {
   if (confirmar && !confirm('¿Borrar todo lo digitado?')) return;
 
   document.getElementById('formulario').reset();
@@ -1680,7 +1726,10 @@ function limpiarFormulario(confirmar) {
   localStorage.removeItem(LLAVE_BORRADOR);
   document.getElementById('estadoBorrador').textContent = '';
   limpiarAviso('avisoRecibir');
-  document.getElementById('num_boleta_manual').focus();
+
+  // En segundo plano no se roba el foco: la persona está viendo la boleta
+  // guardada y saltarle el cursor a otra pantalla desorienta.
+  if (!enSegundoPlano) document.getElementById('num_boleta_manual').focus();
 }
 
 /* ==========================================================================
@@ -1771,7 +1820,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase4-build-5';
+var BUILD_ESPERADO = 'fase4-build-6';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
