@@ -493,6 +493,21 @@ table.lineas tr:last-child td{border-bottom:0}
   .fila-valor{flex-wrap:wrap}
   .cfg-agregar input[type=text]{min-width:100%}
 }
+/* --- Recargando -----------------------------------------------------------
+   Una lista que se vacia y pone "Cargando..." se siente lenta aunque el
+   servidor tarde lo mismo: la pantalla se queda sin nada que mirar y el ojo
+   cuenta el tiempo. Se deja lo anterior visible, atenuado y sin poder
+   tocarse, con una barra delgada arriba que dice que algo esta pasando. */
+.recargando{position:relative;opacity:.45;pointer-events:none;transition:opacity .15s}
+.recargando::before{
+  content:'';position:absolute;left:0;right:0;top:-3px;height:3px;border-radius:3px;
+  background:linear-gradient(90deg,transparent,var(--cian),transparent);
+  background-size:40% 100%;background-repeat:no-repeat;
+  animation:corre 1.1s linear infinite;z-index:5}
+@keyframes corre{from{background-position:-40% 0}to{background-position:140% 0}}
+@media (prefers-reduced-motion: reduce){
+  .recargando::before{animation:none;background:var(--cian);opacity:.5}
+}
 #areaImpresion{display:none}
 
 @media print{
@@ -1199,6 +1214,23 @@ function armarMenu() {
   });
 
   if (opciones.length) irA(opciones[0].id);
+
+  /* Se adelanta la cola que la persona va a abrir de todos modos, mientras
+     mira la primera pantalla. Cuando toque la pestaña, ya está lista.
+     Va sin await y sin romper nada si falla: es un adelanto, no un requisito. */
+  precargar();
+}
+
+function precargar() {
+  var cola = estado.permisos.diagnosticar ? 'diagnostico'
+           : estado.permisos.resolver     ? 'resolucion'
+           : estado.permisos.ejecutarOtras ? 'salida'
+           : estado.permisos.digitarNC    ? 'nc' : '';
+  if (!cola) return;
+
+  setTimeout(function () {
+    try { cargarCola(cola); } catch (e) { /* si falla, se carga al entrar */ }
+  }, 300);
 }
 
 function irA(id) {
@@ -1739,7 +1771,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase4-build-3';
+var BUILD_ESPERADO = 'fase4-build-4';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -1899,9 +1931,10 @@ function cajaDeCola(cola) {
  */
 async function cargarCola(cola, abrir) {
   var caja = cajaDeCola(cola);
-  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Cargando…</div></div>';
+  ocupada(caja, true);
 
   var r = await api('listarCola', { cola: cola });
+  ocupada(caja, false);
 
   if (!r.ok) {
     caja.innerHTML = '<div class="aviso error"><b>No se pudo cargar</b>' +
@@ -2485,9 +2518,10 @@ function guardarResolucion(boton) {
    ========================================================================== */
 async function cargarTablero() {
   var caja = document.getElementById('cajaTablero');
-  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Calculando…</div></div>';
+  ocupada(caja, true, 'Calculando…');
 
   var r = await api('tablero', {});
+  ocupada(caja, false);
   if (!r.ok) {
     caja.innerHTML = '<div class="aviso error"><b>No se pudo cargar el tablero</b>' +
       (r.errores || [r.detalle || r.error]).join(' ') + '</div>';
@@ -2653,9 +2687,10 @@ async function cargarConfig(pestana) {
   if (pestana) pestanaConfig = pestana;
 
   var caja = document.getElementById('cajaConfig');
-  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Cargando…</div></div>';
+  ocupada(caja, true);
 
   var r = await api('configuracion', {});
+  ocupada(caja, false);
   if (!r.ok) {
     caja.innerHTML = '<div class="aviso error"><b>No se pudo cargar</b>' +
       (r.errores || [r.detalle || r.error]).join(' ') + '</div>';
@@ -3037,9 +3072,10 @@ async function buscar() {
     return;
   }
 
-  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Buscando…</div></div>';
+  ocupada(caja, true, 'Buscando…');
 
   var r = await api('buscar', filtros);
+  ocupada(caja, false);
 
   if (!r.ok) {
     caja.innerHTML = '<div class="aviso error"><b>No se pudo buscar</b>' +
@@ -3090,17 +3126,24 @@ function buscarPorEstado(valorEstado) {
 
 async function buscarAbiertas() {
   var caja = document.getElementById('resultados');
-  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Buscando…</div></div>';
+  ocupada(caja, true, 'Buscando…');
 
   var estados = (estado.listas.estados_boleta || []).filter(function (e) {
     return e !== 'Cerrada';
   });
 
+  /* Las cuatro consultas van en paralelo, no una tras otra. Antes se esperaba
+     a que terminara cada estado para pedir el siguiente: cuatro esperas
+     seguidas en vez de una. */
+  var respuestas = await Promise.all(estados.map(function (e) {
+    return api('buscar', { texto: '', campo: 'todo', estado: e });
+  }));
+  ocupada(caja, false);
+
   var todo = [];
-  for (var i = 0; i < estados.length; i++) {
-    var r = await api('buscar', { texto: '', campo: 'todo', estado: estados[i] });
-    if (r.ok && r.resultados) todo = todo.concat(r.resultados);
-  }
+  respuestas.forEach(function (r) {
+    if (r && r.ok && r.resultados) todo = todo.concat(r.resultados);
+  });
 
   if (!todo.length) {
     caja.innerHTML = '<div class="vacio"><span class="icono">✅</span>' +
@@ -3233,8 +3276,9 @@ async function verBoleta(idGarantia) {
   var caja = document.getElementById('resultados');
   var previo = caja.innerHTML;
 
-  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Abriendo…</div></div>';
+  ocupada(caja, true, 'Abriendo…');
   var r = await api('obtener', { id_garantia: idGarantia });
+  ocupada(caja, false);
 
   if (!r.ok) {
     caja.innerHTML = previo;
@@ -3687,6 +3731,26 @@ async function imprimirBoleta() {
 /* ==========================================================================
    UTILIDADES
    ========================================================================== */
+/**
+ * Marca una caja como "trabajando" sin borrar lo que ya tiene.
+ *
+ * Si esta vacia -la primera vez- si se muestra el cargando de siempre: ahi no
+ * hay nada que conservar y una caja en blanco sin explicacion es peor.
+ */
+function ocupada(caja, si, textoVacio) {
+  if (!caja) return;
+  if (si) {
+    if (!caja.innerHTML.trim()) {
+      caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>' +
+                       escapar(textoVacio || 'Cargando…') + '</div></div>';
+    } else {
+      caja.classList.add('recargando');
+    }
+  } else {
+    caja.classList.remove('recargando');
+  }
+}
+
 function escapar(v) {
   if (v === null || v === undefined) return '';
   return String(v)
