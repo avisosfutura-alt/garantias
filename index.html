@@ -508,6 +508,33 @@ table.lineas tr:last-child td{border-bottom:0}
 @media (prefers-reduced-motion: reduce){
   .recargando::before{animation:none;background:var(--cian);opacity:.5}
 }
+/* --- Recorrido de una unidad --------------------------------------------
+   Cada paso con quién lo hizo y cuándo. La pregunta que resuelve es la que
+   aparece cuando algo salió mal: "¿quién dijo que esto no tenía arreglo?". */
+.unidad-ficha{background:var(--panel-alto);border:1px solid var(--gris-linea);
+  border-radius:10px;padding:12px 14px;margin-bottom:10px}
+.unidad-ficha .titulo{display:flex;justify-content:space-between;gap:10px;
+  align-items:baseline;flex-wrap:wrap;margin-bottom:8px}
+.unidad-ficha .titulo b{font-size:.95rem}
+.unidad-ficha .id{font-size:.74rem;color:var(--gris);font-family:ui-monospace,monospace}
+.pasos{display:flex;flex-direction:column;gap:0}
+.paso{display:grid;grid-template-columns:130px 1fr;gap:10px;padding:6px 0;
+  border-top:1px solid var(--gris-linea);font-size:.85rem}
+.paso:first-child{border-top:0}
+.paso .cual{color:var(--gris);font-size:.78rem;text-transform:uppercase;
+  letter-spacing:.04em;padding-top:2px}
+.paso .quien{display:block;color:var(--gris);font-size:.78rem;margin-top:2px}
+.paso .extra{display:block;color:var(--gris);font-size:.8rem;margin-top:2px}
+.paso.pendiente .valor{color:var(--gris);font-style:italic}
+@media(max-width:620px){ .paso{grid-template-columns:1fr;gap:2px} }
+.historial{margin-top:14px}
+.historial summary{cursor:pointer;font-size:.85rem;color:var(--cian);padding:6px 0}
+.historial table{width:100%;border-collapse:collapse;font-size:.8rem;margin-top:6px}
+.historial th{text-align:left;color:var(--gris);font-weight:600;font-size:.75rem;
+  text-transform:uppercase;letter-spacing:.04em;padding:6px 8px;
+  border-bottom:1px solid var(--gris-linea)}
+.historial td{padding:6px 8px;border-bottom:1px solid var(--gris-linea);vertical-align:top}
+.historial .de{color:var(--gris);text-decoration:line-through}
 #areaImpresion{display:none}
 
 @media print{
@@ -558,6 +585,8 @@ table.lineas tr:last-child td{border-bottom:0}
   text-align:left;font-size:8pt;text-transform:uppercase;
 }
 #areaImpresion table td{border:1px solid #666;padding:5px 6px;vertical-align:top}
+/* Quién y cuándo, más pequeño que el dato pero perfectamente legible en papel. */
+#areaImpresion table .firma{font-size:7.5pt;color:#444 !important;font-style:italic}
 
 #areaImpresion .firmas{
   display:flex;gap:40px;margin-top:38px;page-break-inside:avoid;
@@ -1820,7 +1849,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase4-build-6';
+var BUILD_ESPERADO = 'fase5-build-1';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -3339,14 +3368,109 @@ async function verBoleta(idGarantia) {
   caja.innerHTML =
     '<div class="acciones" style="margin-bottom:14px">' +
       '<button class="btn secundario pequeno" onclick="volverALista()">‹ Volver a la lista</button>' +
-    '</div>' + tarjetaResultado(r.boleta, r.articulos, true);
+    '</div>' + tarjetaResultado(r.boleta, r.articulos, true, r.historial);
 }
 
 function volverALista() {
   if (estado.listaPrevia) document.getElementById('resultados').innerHTML = estado.listaPrevia;
 }
 
-function tarjetaResultado(b, lineas, conBotonImprimir) {
+/**
+ * Un paso del recorrido de la unidad. Solo se dibuja si de verdad pasó.
+ * `quien` y `cuando` son el punto de todo esto: sin eso, el reporte dice qué
+ * se decidió pero no a quién preguntarle.
+ */
+function paso(cual, valor, quien, cuando, extra) {
+  if (!valor) return '';
+  return '<div class="paso">' +
+    '<span class="cual">' + escapar(cual) + '</span>' +
+    '<span><span class="valor">' + escapar(valor) + '</span>' +
+      (quien || cuando
+        ? '<span class="quien">' +
+          (quien ? escapar(quien) : 'sin registrar') +
+          (cuando ? ' · ' + escapar(soloFecha(cuando)) : '') + '</span>'
+        : '') +
+      (extra ? '<span class="extra">' + escapar(extra) + '</span>' : '') +
+    '</span></div>';
+}
+
+function fichaUnidad(l) {
+  var pasos = '';
+
+  pasos += paso('Recibido con', l.dano_reportado, '', '',
+                l.accesorios_recibidos ? 'Accesorios: ' + l.accesorios_recibidos : '');
+
+  pasos += paso('Diagnóstico', l.diagnostico && l.diagnostico !== 'Pendiente' ? l.diagnostico : '',
+                l.tecnico_nombre || l.tecnico_correo, l.fecha_diagnostico, l.detalle_tecnico);
+
+  pasos += paso('Resolución', l.resolucion, l.resuelto_por, l.fecha_resolucion, l.notas_linea);
+
+  pasos += paso('Nota de crédito', l.referencia_nc, l.nc_por, l.fecha_nc,
+                l.nc_a_nombre_de ? 'A nombre de ' + l.nc_a_nombre_de : '');
+
+  pasos += paso('Aviso al cliente', l.fecha_aviso_cliente ? 'Se le avisó' : '',
+                l.avisado_por, l.fecha_aviso_cliente);
+
+  if (esSiTexto(l.ejecutada)) {
+    var detalle = [];
+    if (l.referencia_ejecucion) detalle.push('Ref. ' + l.referencia_ejecucion);
+    if (l.retirado_por) detalle.push('Retira: ' + l.retirado_por);
+    pasos += paso('Salida de bodega', l.tipo_movimiento || 'Salió',
+                  l.ejecutado_por, l.fecha_ejecucion, detalle.join(' · '));
+  }
+
+  if (!pasos) {
+    pasos = '<div class="paso pendiente"><span class="cual">Estado</span>' +
+            '<span class="valor">Todavía sin movimientos</span></div>';
+  }
+
+  return '<div class="unidad-ficha">' +
+    '<div class="titulo">' +
+      '<b>' + escapar(l.descripcion) +
+        (l.marca ? ' · ' + escapar(l.marca) : '') + '</b>' +
+      '<span class="id">' + escapar(l.id_linea) +
+        (l.serie_lote ? ' · serie ' + escapar(l.serie_lote) : '') +
+        (l.codigo_articulo ? ' · ' + escapar(l.codigo_articulo) : '') + '</span>' +
+    '</div>' +
+    '<div class="pasos">' + pasos + '</div>' +
+  '</div>';
+}
+
+function esSiTexto(v) {
+  return String(v || '').trim().toLowerCase() === 'si' ||
+         String(v || '').trim().toLowerCase() === 'sí';
+}
+
+/**
+ * El historial de la bitácora, plegado.
+ *
+ * Los campos de la unidad dicen CÓMO quedó cada paso. Esto dice además si
+ * algo se corrigió después, de qué a qué y quién lo hizo — que es lo que se
+ * pregunta cuando un dato no cuadra.
+ */
+function bloqueHistorial(historial) {
+  if (!historial || !historial.length) return '';
+
+  return '<details class="historial no-imprimir">' +
+    '<summary>Ver historial de cambios (' + historial.length + ')</summary>' +
+    '<div class="tabla-envoltura"><table><thead><tr>' +
+      '<th>Cuándo</th><th>Quién</th><th>Qué cambió</th><th>De</th><th>A</th>' +
+    '</tr></thead><tbody>' +
+    historial.map(function (h) {
+      return '<tr>' +
+        '<td style="white-space:nowrap">' + escapar(soloFecha(h.fecha)) + '</td>' +
+        '<td>' + escapar(h.usuario || '—') + '</td>' +
+        '<td>' + escapar(h.rotulo) +
+          (h.id_linea ? '<br><span class="id">' + escapar(h.id_linea) + '</span>' : '') +
+        '</td>' +
+        '<td class="de">' + escapar(h.anterior || '—') + '</td>' +
+        '<td>' + escapar(h.nuevo || '—') + '</td>' +
+      '</tr>';
+    }).join('') +
+    '</tbody></table></div></details>';
+}
+
+function tarjetaResultado(b, lineas, conBotonImprimir, historial) {
   var clase = claseEstado(b.estado_boleta);
 
   var esInterna = (b.tipo_boleta === 'Revision interna');
@@ -3389,26 +3513,12 @@ function tarjetaResultado(b, lineas, conBotonImprimir) {
       '</div>';
 
   if (lineas && lineas.length) {
-    html += '<span class="etiqueta" style="margin-bottom:4px">' +
+    html += '<span class="etiqueta" style="margin-bottom:6px">' +
             lineas.length + (lineas.length === 1 ? ' unidad' : ' unidades') + '</span>' +
-            '<div class="tabla-envoltura"><table class="lineas"><thead><tr>' +
-            '<th>Línea</th><th>Artículo</th><th>Daño reportado</th><th>Diagnóstico</th>' +
-            '</tr></thead><tbody>';
-
-    lineas.forEach(function (l) {
-      html += '<tr>' +
-        '<td style="white-space:nowrap">' + escapar(l.id_linea) + '</td>' +
-        '<td><b>' + escapar(l.descripcion) + '</b>' +
-          (l.marca ? '<br><span style="color:var(--gris);font-size:.82em">' +
-                     escapar(l.marca) + '</span>' : '') +
-          (l.codigo_articulo ? '<br><span style="color:var(--gris);font-size:.8em">' +
-                     escapar(l.codigo_articulo) + '</span>' : '') + '</td>' +
-        '<td>' + escapar(l.dano_reportado) + '</td>' +
-        '<td>' + escapar(l.diagnostico || 'Pendiente') + '</td>' +
-      '</tr>';
-    });
-    html += '</tbody></table></div>';
+            lineas.map(fichaUnidad).join('');
   }
+
+  html += bloqueHistorial(historial);
 
   if (conBotonImprimir) {
     /* Los dos papeles de la boleta, uno al lado del otro: el de entrada y el
@@ -3667,13 +3777,31 @@ function construirReporteTaller(b, lineas) {
   if (em.telefono) contacto.push('Tel. ' + em.telefono);
   if (em.correo)   contacto.push(em.correo);
 
+  /* Cada paso lleva quién lo hizo y cuándo, en letra pequeña bajo el dato.
+     Es lo que convierte el reporte en un documento con responsable: sin eso
+     dice qué se decidió, pero no a quién preguntarle. */
+  function firma(quien, cuando) {
+    if (!quien && !cuando) return '';
+    return '<br><span class="firma">' +
+      escapar(quien || 'sin registrar') +
+      (cuando ? ' · ' + escapar(soloFecha(cuando)) : '') + '</span>';
+  }
+
   var filas = (lineas || []).map(function (l, i) {
     var salida = [];
-    if (l.referencia_nc)        salida.push('NC ' + escapar(l.referencia_nc));
-    if (l.tipo_movimiento)      salida.push(escapar(l.tipo_movimiento));
-    if (l.referencia_ejecucion) salida.push('Ref. ' + escapar(l.referencia_ejecucion));
-    if (l.fecha_ejecucion)      salida.push(escapar(soloFecha(l.fecha_ejecucion)));
-    if (l.retirado_por)         salida.push('Retira: ' + escapar(l.retirado_por));
+    if (l.referencia_nc) {
+      salida.push('NC ' + escapar(l.referencia_nc) + firma(l.nc_por, l.fecha_nc));
+    }
+    if (l.tipo_movimiento || l.referencia_ejecucion || l.fecha_ejecucion) {
+      var mov = [];
+      if (l.tipo_movimiento)      mov.push(escapar(l.tipo_movimiento));
+      if (l.referencia_ejecucion) mov.push('Ref. ' + escapar(l.referencia_ejecucion));
+      if (l.retirado_por)         mov.push('Retira: ' + escapar(l.retirado_por));
+      salida.push(mov.join('<br>') + firma(l.ejecutado_por, l.fecha_ejecucion));
+    }
+    if (l.fecha_aviso_cliente) {
+      salida.push('Avisado al cliente' + firma(l.avisado_por, l.fecha_aviso_cliente));
+    }
 
     return '<tr>' +
       '<td style="text-align:center">' + (i + 1) + '</td>' +
@@ -3682,8 +3810,11 @@ function construirReporteTaller(b, lineas) {
         (l.serie_lote ? '<br>Serie ' + escapar(l.serie_lote) : '') + '</td>' +
       '<td>' + escapar(l.dano_reportado || '—') + '</td>' +
       '<td>' + escapar(l.diagnostico || 'Pendiente') +
-        (l.detalle_tecnico ? '<br>' + escapar(l.detalle_tecnico) : '') + '</td>' +
-      '<td>' + escapar(l.resolucion || 'Pendiente') + '</td>' +
+        (l.detalle_tecnico ? '<br>' + escapar(l.detalle_tecnico) : '') +
+        firma(l.tecnico_nombre || l.tecnico_correo, l.fecha_diagnostico) + '</td>' +
+      '<td>' + escapar(l.resolucion || 'Pendiente') +
+        (l.notas_linea ? '<br>' + escapar(l.notas_linea) : '') +
+        firma(l.resuelto_por, l.fecha_resolucion) + '</td>' +
       '<td>' + (salida.length ? salida.join('<br>') : 'Todavía en bodega') + '</td>' +
     '</tr>';
   }).join('');
@@ -3729,8 +3860,10 @@ function construirReporteTaller(b, lineas) {
 
       '<div class="bloque"><h3>Qué se hizo</h3>' +
         '<table><thead><tr>' +
-          '<th style="width:26px">#</th><th>Artículo</th><th>Daño reportado</th>' +
-          '<th>Diagnóstico</th><th>Resolución</th><th>Salida</th>' +
+          '<th style="width:22px">#</th><th>Artículo</th><th>Daño reportado</th>' +
+          '<th>Diagnóstico<br><span class="firma">quién y cuándo</span></th>' +
+          '<th>Resolución<br><span class="firma">quién y cuándo</span></th>' +
+          '<th>Salida<br><span class="firma">quién y cuándo</span></th>' +
         '</tr></thead><tbody>' + filas + '</tbody></table>' +
       '</div>' +
 
