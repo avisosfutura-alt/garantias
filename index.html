@@ -413,6 +413,43 @@ table.lineas tr:last-child td{border-bottom:0}
 /* ==========================================================================
    IMPRESIÓN — boleta de recepción
    ========================================================================== */
+/* --- Tablero ------------------------------------------------------------
+   Marcas delgadas, extremos redondeados de 4px anclados a la línea base, y
+   2px de separación entre barras vecinas. El color de las barras de
+   resolución es UNO SOLO: son categorías sin orden natural, y pintarlas de
+   colores distintos gastaría el único canal libre en información que la
+   etiqueta ya da. Las bandas de antigüedad sí llevan color, porque ahí el
+   color significa algo: es el mismo semáforo de toda la aplicación. */
+.tablero-fichas{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:18px}
+.ficha{background:var(--panel);border:1px solid var(--gris-linea);border-radius:12px;padding:14px 16px}
+.ficha .rotulo{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--gris);margin-bottom:6px}
+.ficha .cifra{font-size:2rem;font-weight:700;line-height:1.05;color:var(--texto)}
+.ficha .cifra.chica{font-size:1.5rem}
+.ficha .pie{font-size:.78rem;color:var(--gris);margin-top:6px}
+.ficha .delta{font-weight:600}
+.ficha .delta.sube{color:var(--verde)} .ficha .delta.baja{color:var(--coral)}
+.ficha.foco{border-color:var(--azul);background:linear-gradient(180deg,#1b2340,var(--panel))}
+
+.grafico{background:var(--panel);border:1px solid var(--gris-linea);border-radius:12px;padding:16px;margin-bottom:18px}
+.grafico h2{font-size:.95rem;margin:0 0 3px;color:var(--texto)}
+.grafico .sub{font-size:.78rem;color:var(--gris);margin-bottom:14px;display:block}
+.barras{display:flex;flex-direction:column;gap:2px}
+.barra-fila{display:grid;grid-template-columns:minmax(120px,32%) 1fr auto;align-items:center;gap:10px;padding:3px 0}
+.barra-fila .et{font-size:.82rem;color:var(--texto);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+/* display:block en las dos, a propósito: son <span>, y un elemento en línea
+   ignora alto y ancho — las barras salían invisibles sobre la pista vacía. */
+.barra-fila .pista{display:block;background:var(--campo);border-radius:4px;height:16px;overflow:hidden}
+.barra-fila .marca{display:block;height:100%;border-radius:0 4px 4px 0;background:var(--azul)}
+.barra-fila .marca.ok{background:var(--verde)}
+.barra-fila .marca.atencion{background:var(--oro)}
+.barra-fila .marca.atrasado{background:var(--rojo)}
+.barra-fila .val{font-size:.85rem;font-weight:600;color:var(--texto);min-width:2.5em;text-align:right}
+.barra-fila .val .comp{font-weight:400;color:var(--gris);font-size:.78rem}
+.tablero-dos{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:760px){
+  .tablero-dos{grid-template-columns:1fr}
+  .barra-fila{grid-template-columns:minmax(90px,40%) 1fr auto}
+}
 #areaImpresion{display:none}
 
 @media print{
@@ -794,6 +831,18 @@ table.lineas tr:last-child td{border-bottom:0}
     </section>
 
     <!-- ---------------------------------------------------------------
+         TABLERO
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaTablero">
+      <h1>Tablero</h1>
+      <p class="subtitulo">
+        Los números del área. El mes en curso contra el anterior, y una foto de
+        lo que hay encima ahora mismo.
+      </p>
+      <div id="cajaTablero"></div>
+    </section>
+
+    <!-- ---------------------------------------------------------------
          BUSCAR
          --------------------------------------------------------------- -->
     <section class="pantalla" id="pantallaBuscar">
@@ -1073,6 +1122,9 @@ function armarMenu() {
   if (estado.permisos.consultar) {
     opciones.push({ id:'Buscar', rotulo:'Buscar' });
   }
+  if (estado.permisos.verTablero) {
+    opciones.push({ id:'Tablero', rotulo:'Tablero' });
+  }
 
   var menu = document.getElementById('menu');
   menu.innerHTML = '';
@@ -1089,7 +1141,7 @@ function armarMenu() {
 }
 
 function irA(id) {
-  ['Recibir', 'Taller', 'Resoluciones', 'NC', 'Salida', 'Buscar', 'Guardada'].forEach(function (p) {
+  ['Recibir', 'Taller', 'Resoluciones', 'NC', 'Salida', 'Buscar', 'Tablero', 'Guardada'].forEach(function (p) {
     var el = document.getElementById('pantalla' + p);
     if (el) el.classList.toggle('visible', p === id);
   });
@@ -1104,6 +1156,7 @@ function irA(id) {
   if (id === 'Resoluciones') cargarCola('resolucion');
   if (id === 'NC')           cargarCola('nc');
   if (id === 'Salida')       cargarCola('salida');
+  if (id === 'Tablero')      cargarTablero();
 }
 
 /* ==========================================================================
@@ -1623,7 +1676,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase3-build-6';
+var BUILD_ESPERADO = 'fase3-build-7';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -2349,6 +2402,171 @@ function guardarDiagnostico(boton) {
 
 function guardarResolucion(boton) {
   guardarUnidad(boton, 'resolver', 'resolucion', 'Resolución guardada');
+}
+
+/* ==========================================================================
+   TABLERO
+
+   Los números se calculan en el servidor (ver regla de las fechas). Aquí solo
+   se pintan. Tres decisiones de forma, a propósito:
+
+   - Las cifras del mes van como fichas, no como gráfico: son cinco números
+     sueltos, y un gráfico de cinco barras sin eje común no dice nada que el
+     número no diga mejor.
+   - Las barras de resolución llevan UN SOLO color. Son categorías sin orden
+     natural; pintar cada una distinta gastaría el único canal libre en
+     repetir lo que la etiqueta ya dice.
+   - Las bandas de antigüedad SÍ llevan color, porque ahí significa: es el
+     mismo semáforo que en el resto de la aplicación, y va con su etiqueta,
+     nunca solo.
+   ========================================================================== */
+async function cargarTablero() {
+  var caja = document.getElementById('cajaTablero');
+  caja.innerHTML = '<div class="cargando"><span class="giro"></span><div>Calculando…</div></div>';
+
+  var r = await api('tablero', {});
+  if (!r.ok) {
+    caja.innerHTML = '<div class="aviso error"><b>No se pudo cargar el tablero</b>' +
+      (r.errores || [r.detalle || r.error]).join(' ') + '</div>';
+    return;
+  }
+
+  caja.innerHTML =
+    fichasTablero(r) +
+    graficoAntiguedad(r) +
+    graficoResoluciones(r) +
+    '<div class="tablero-dos">' +
+      tablaRanking('Artículos con más garantías', r.ranking.articulos, r.ranking.desde_rotulo) +
+      tablaRanking('Marcas con más garantías', r.ranking.marcas, r.ranking.desde_rotulo) +
+    '</div>' +
+    '<p class="subtitulo" style="font-size:.78rem">Calculado el ' +
+      escapar(r.generado) + ' en el servidor.</p>';
+}
+
+/** Diferencia contra el mes anterior, en palabras y con su color. */
+function delta(actual, anterior, masEsMejor) {
+  if (anterior === null || anterior === undefined) return '';
+  // Redondeado: restar dos promedios da 11.4 - 14.2 = -2.799999999999999.
+  var d = Math.round((actual - anterior) * 10) / 10;
+  if (d === 0) return '<span class="delta">igual que</span> el mes anterior (' + anterior + ')';
+  var mejor = masEsMejor ? d > 0 : d < 0;
+  return '<span class="delta ' + (mejor ? 'sube' : 'baja') + '">' +
+         (d > 0 ? '+' : '') + d + '</span> contra el mes anterior (' + anterior + ')';
+}
+
+function fichasTablero(r) {
+  var m = r.mes, a = r.mes_anterior;
+
+  var prom = m.dias_promedio === null
+    ? '<div class="cifra chica" style="color:var(--gris)">Sin salidas</div>' +
+      '<div class="pie">Este mes no ha salido ninguna unidad todavía</div>'
+    : '<div class="cifra">' + m.dias_promedio + ' <span style="font-size:1rem;font-weight:400;color:var(--gris)">días</span></div>' +
+      '<div class="pie">' + (a.dias_promedio === null
+        ? 'El mes anterior no tuvo salidas'
+        : delta(m.dias_promedio, a.dias_promedio, false)) + '</div>';
+
+  return '<div class="tablero-fichas">' +
+    /* La cifra que de verdad importa: todo lo que no está cerrado sigue en
+       bodega o en taller. Por eso va destacada y de primera. */
+    '<div class="ficha foco"><div class="rotulo">Sigue en bodega</div>' +
+      '<div class="cifra">' + r.abiertas.total + '</div>' +
+      '<div class="pie">' + (r.abiertas.total === 1 ? 'unidad sin salir' : 'unidades sin salir') +
+      ', de todos los meses</div></div>' +
+
+    '<div class="ficha"><div class="rotulo">Recibidas en ' + escapar(m.rotulo) + '</div>' +
+      '<div class="cifra">' + m.boletas_recibidas + '</div>' +
+      '<div class="pie">' + m.unidades_recibidas +
+      (m.unidades_recibidas === 1 ? ' unidad · ' : ' unidades · ') +
+      delta(m.boletas_recibidas, a.boletas_recibidas, true) + '</div></div>' +
+
+    '<div class="ficha"><div class="rotulo">Cerradas en ' + escapar(m.rotulo) + '</div>' +
+      '<div class="cifra">' + m.boletas_cerradas + '</div>' +
+      '<div class="pie">' + m.unidades_salidas +
+      (m.unidades_salidas === 1 ? ' unidad salió · ' : ' unidades salieron · ') +
+      delta(m.boletas_cerradas, a.boletas_cerradas, true) + '</div></div>' +
+
+    '<div class="ficha"><div class="rotulo">Tiempo promedio</div>' + prom + '</div>' +
+  '</div>';
+}
+
+/** Una fila de barra. `clase` solo se usa donde el color significa algo. */
+function filaBarra(etiqueta, valor, maximo, clase, comparativo, ayuda) {
+  var ancho = maximo > 0 ? Math.max(valor > 0 ? 2 : 0, (valor / maximo) * 100) : 0;
+  return '<div class="barra-fila" title="' + escapar(ayuda || (etiqueta + ': ' + valor)) + '">' +
+    '<span class="et">' + escapar(etiqueta) + '</span>' +
+    '<span class="pista"><span class="marca ' + (clase || '') + '" ' +
+      'style="width:' + ancho.toFixed(1) + '%"></span></span>' +
+    '<span class="val">' + valor +
+      (comparativo ? ' <span class="comp">' + comparativo + '</span>' : '') +
+    '</span></div>';
+}
+
+function graficoAntiguedad(r) {
+  var a = r.abiertas;
+  var maximo = Math.max(a.menos_7, a.de_7_a_30, a.mas_30, 1);
+
+  if (!a.total) {
+    return '<div class="grafico"><h2>Lo que sigue en bodega, por antigüedad</h2>' +
+      '<div class="vacio" style="padding:20px"><span class="icono">✅</span>' +
+      'No queda nada sin salir. Todo lo que entró ya salió.</div></div>';
+  }
+
+  return '<div class="grafico">' +
+    '<h2>Lo que sigue en bodega, por antigüedad</h2>' +
+    '<span class="sub">Contado desde que el artículo entró. El color es el mismo ' +
+      'semáforo de las demás pantallas.</span>' +
+    '<div class="barras">' +
+      filaBarra('Menos de ' + r.plazos.atencion + ' días', a.menos_7, maximo, 'ok', '',
+                'Dentro del plazo: ' + a.menos_7) +
+      filaBarra('De ' + r.plazos.atencion + ' a ' + r.plazos.atrasado + ' días',
+                a.de_7_a_30, maximo, 'atencion', '', 'En atención: ' + a.de_7_a_30) +
+      filaBarra('Más de ' + r.plazos.atrasado + ' días', a.mas_30, maximo, 'atrasado', '',
+                'Atrasadas: ' + a.mas_30) +
+    '</div></div>';
+}
+
+function graficoResoluciones(r) {
+  var lista = r.por_resolucion || [];
+  var conAlgo = lista.filter(function (x) { return x.actual > 0 || x.anterior > 0; });
+
+  if (!conAlgo.length) {
+    return '<div class="grafico"><h2>En qué terminaron, en ' + escapar(r.mes.rotulo) + '</h2>' +
+      '<div class="vacio" style="padding:20px"><span class="icono">📭</span>' +
+      'Todavía no se ha resuelto ninguna unidad este mes ni el anterior.</div></div>';
+  }
+
+  var maximo = Math.max.apply(null, conAlgo.map(function (x) { return x.actual; }).concat([1]));
+  var total = conAlgo.reduce(function (s, x) { return s + x.actual; }, 0);
+
+  return '<div class="grafico">' +
+    '<h2>En qué terminaron, en ' + escapar(r.mes.rotulo) + '</h2>' +
+    '<span class="sub">Unidades con resolución definida este mes' +
+      (total ? ': ' + total : '') +
+      '. El número gris es el mismo dato del mes anterior.</span>' +
+    '<div class="barras">' +
+      conAlgo.map(function (x) {
+        return filaBarra(x.resolucion, x.actual, maximo, '',
+                         x.anterior ? '(' + x.anterior + ')' : '',
+                         x.resolucion + ': ' + x.actual + ' este mes, ' +
+                         x.anterior + ' el mes anterior');
+      }).join('') +
+    '</div></div>';
+}
+
+function tablaRanking(titulo, filas, desde) {
+  if (!filas || !filas.length) {
+    return '<div class="grafico"><h2>' + escapar(titulo) + '</h2>' +
+      '<div class="vacio" style="padding:20px"><span class="icono">📭</span>' +
+      'Todavía no hay suficientes datos.</div></div>';
+  }
+  var maximo = filas[0].n || 1;
+  return '<div class="grafico">' +
+    '<h2>' + escapar(titulo) + '</h2>' +
+    '<span class="sub">Desde ' + escapar(desde) + '. Doce meses móviles: en un solo ' +
+      'mes los números son muy pocos para que un ranking signifique algo.</span>' +
+    '<div class="barras">' +
+      filas.map(function (f) { return filaBarra(f.nombre, f.n, maximo); }).join('') +
+    '</div></div>';
 }
 
 /* ==========================================================================
