@@ -1113,6 +1113,50 @@ async function api(accion, datos) {
     return { ok:false, error:'SIN_CONFIGURAR',
              errores:['Falta pegar la URL del Web App en CONFIG.API_URL.'] };
   }
+  /* Reintento automático — SOLO para lo que no escribe nada.
+   *
+   * Apps Script no entrega la respuesta desde la URL /exec: manda al
+   * navegador a un segundo servidor (script.googleusercontent.com), y ese
+   * segundo salto falla de vez en cuando con una página de Google que dice
+   * "No se puede abrir el archivo en estos momentos". La misma petición,
+   * repetida, funciona. Es un tropiezo de Google, no del internet ni del
+   * script — y no se puede evitar, solo reintentar.
+   *
+   * POR QUÉ LA LISTA ES DE LECTURAS Y NO DE ESCRITURAS:
+   * repetir un guardado es peligroso. Si el guardado SÍ entró y lo que se
+   * perdió fue la respuesta, el reintento lo haría dos veces: dos boletas
+   * con el mismo cliente, dos renglones en la bitácora. Por eso solo se
+   * reintenta lo que se puede pedir mil veces sin consecuencia.
+   *
+   * La lista es de permitidos, nunca de prohibidos: una acción nueva que
+   * nadie agregue aquí simplemente no se reintenta. Equivocarse por ese lado
+   * cuesta un mensaje de error; por el otro, datos duplicados. */
+  var LECTURAS = ['ping', 'login', 'buscar', 'obtener', 'listarCola',
+                  'tablero', 'ubicaciones', 'configuracion'];
+  var reintentos = (LECTURAS.indexOf(accion) !== -1) ? 2 : 0;
+
+  for (var intento = 0; ; intento++) {
+    var r = await unaPeticion(accion, datos, intento + 1);
+    var recuperable = (r.error === 'SIN_CONEXION' || r.error === 'RESPUESTA_NO_JSON' ||
+                       r.error === 'RESPUESTA_CORTADA');
+
+    if (recuperable && reintentos === 0) {
+      /* Una escritura que se quedó sin respuesta es AMBIGUA: no se sabe si
+       * entró o no. Decir "no se guardó" sería adivinar, y adivinar mal aquí
+       * termina en dos boletas del mismo cliente. Se dice la verdad. */
+      r.errores = (r.errores || []).concat([
+        'No se sabe si el guardado alcanzó a entrar. Revise antes de repetirlo: ' +
+        'si ya quedó, repetirlo lo duplicaría.']);
+      return r;
+    }
+
+    if (!recuperable || intento >= reintentos) return r;
+    // Una pausa corta: el tropiezo de Google se pasa solo en menos de un segundo.
+    await new Promise(function (listo) { setTimeout(listo, 500 + intento * 500); });
+  }
+}
+
+async function unaPeticion(accion, datos, numeroIntento) {
   /* Los tres fallos posibles se separan A PROPOSITO.
    *
    * Antes todo esto era un solo try y cualquier tropiezo decia "Revise el
@@ -1154,20 +1198,31 @@ async function api(accion, datos) {
   try {
     salida = JSON.parse(texto);
   } catch (err) {
-    var pista = 'El servidor contestó (código ' + res.status + '), pero no con datos. ' +
-                'Esto NO es el internet.';
     var muestra = String(texto || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+    var pista;
 
-    if (res.status === 401 || res.status === 403 || /iniciar sesi|sign in|accounts\.google/i.test(texto)) {
-      pista += ' Google está pidiendo iniciar sesión: la implementación del Web App ' +
-               'quedó con acceso restringido. Debe decir "Cualquier usuario".';
+    if (/no se puede abrir el archivo|no puede abrir el archivo|unable to open file|p.gina no encontrada/i.test(muestra)) {
+      /* El tropiezo conocido de Google. Se nombra aparte porque la reacción
+       * correcta es distinta: aquí no hay nada que revisar ni que arreglar. */
+      pista = 'Google no entregó la respuesta esta vez. **No es su internet ni un ' +
+              'error del sistema**: es un tropiezo de los servidores de Google que ' +
+              'se pasa solo. Intente de nuevo.';
+    } else if (res.status === 401 || res.status === 403 ||
+               /iniciar sesi|sign in|accounts\.google/i.test(texto)) {
+      pista = 'Google está pidiendo iniciar sesión (código ' + res.status + '). Esto NO es ' +
+              'el internet: la implementación del Web App quedó con acceso restringido. ' +
+              'Debe decir "Cualquier usuario".';
     } else if (/error|excepci|exception/i.test(muestra)) {
-      pista += ' El script se cayó o se quedó sin tiempo. Abra el Apps Script → ' +
-               'Ejecuciones, y busque la que falló: ahí sale la línea exacta.';
+      pista = 'El servidor contestó (código ' + res.status + ') pero el script se cayó o se ' +
+              'quedó sin tiempo. Esto NO es el internet. Abra el Apps Script → ' +
+              'Ejecuciones y busque la que falló: ahí sale la línea exacta.';
     } else {
-      pista += ' Revise que la URL del Web App sea la vigente y que se haya ' +
-               'implementado una versión nueva.';
+      pista = 'El servidor contestó (código ' + res.status + '), pero no con datos. Esto NO ' +
+              'es el internet. Revise que la URL del Web App sea la vigente y que se ' +
+              'haya implementado una versión nueva.';
     }
+
+    if (numeroIntento > 1) pista += ' (se intentó ' + numeroIntento + ' veces)';
 
     return { ok:false, error:'RESPUESTA_NO_JSON', http: res.status,
              muestra: muestra.slice(0, 200),
@@ -1963,7 +2018,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase6-build-6';
+var BUILD_ESPERADO = 'fase6-build-7';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
