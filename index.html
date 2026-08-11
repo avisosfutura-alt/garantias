@@ -535,6 +535,37 @@ table.lineas tr:last-child td{border-bottom:0}
   border-bottom:1px solid var(--gris-linea)}
 .historial td{padding:6px 8px;border-bottom:1px solid var(--gris-linea);vertical-align:top}
 .historial .de{color:var(--gris);text-decoration:line-through}
+/* --- Ubicación ------------------------------------------------------------
+   El color dice el ESTADO del traslado, no el lugar: en sitio (tranquilo),
+   en tránsito (algo está pasando), sin ubicar (falta un dato). El lugar lo
+   dice el texto, que es donde debe estar. */
+.marbete-ubi{display:inline-block;font-size:.78rem;padding:2px 9px;border-radius:99px;
+  border:1px solid var(--gris-linea);color:var(--texto);white-space:nowrap;line-height:1.5}
+.marbete-ubi.transito{border-color:var(--oro);color:var(--oro)}
+.marbete-ubi.sin{border-color:var(--coral);color:var(--coral)}
+.marbete-ubi.salio{border-color:var(--verde);color:var(--verde)}
+.marbete-ubi + .marbete-ubi{margin-left:4px}
+
+.barra-lugar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;
+  background:var(--panel);border:1px solid var(--gris-linea);border-radius:12px;
+  padding:12px 14px;margin-bottom:16px}
+.barra-lugar select{width:auto;min-width:170px}
+.barra-lugar .cuenta{font-size:.82rem;color:var(--gris)}
+.grupo-traslado{margin-bottom:22px}
+.grupo-traslado > h2{font-size:1rem;margin:0 0 3px;display:flex;gap:8px;align-items:baseline}
+.grupo-traslado > h2 .n{font-size:.8rem;color:var(--gris);font-weight:400}
+.grupo-traslado > .sub{display:block;font-size:.8rem;color:var(--gris);margin-bottom:12px}
+.caja-boleta{background:var(--panel);border:1px solid var(--gris-linea);border-radius:12px;
+  padding:14px;margin-bottom:10px}
+.caja-boleta.alerta{border-color:var(--oro)}
+.caja-boleta > .cab{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  align-items:baseline;margin-bottom:10px}
+.caja-boleta > .cab .gar{color:var(--cian);font-weight:700}
+.caja-boleta > .cab .cli{color:var(--gris);font-size:.85rem}
+.fila-unidad{display:flex;gap:10px;align-items:center;padding:7px 0;
+  border-top:1px solid var(--gris-linea);font-size:.87rem}
+.fila-unidad .desc{flex:1;min-width:0}
+.fila-unidad .desc .sub{display:block;font-size:.76rem;color:var(--gris)}
 #areaImpresion{display:none}
 
 @media print{
@@ -781,7 +812,7 @@ table.lineas tr:last-child td{border-bottom:0}
 
         <div class="tarjeta" id="tarjetaCompra">
           <h2>Compra</h2>
-          <div class="rejilla tres">
+          <div class="rejilla dos">
             <div class="campo">
               <label for="factura_referencia">
                 N° de factura
@@ -795,6 +826,14 @@ table.lineas tr:last-child td{border-bottom:0}
                 <span class="ayuda">Es lo que sostiene si sigue en garantía</span>
               </label>
               <input type="date" id="fecha_compra" name="fecha_compra">
+            </div>
+            <div class="campo">
+              <label for="vendedor">
+                Vendedor
+                <span class="ayuda">Quién la vendió. Se puede escoger o escribir uno nuevo</span>
+              </label>
+              <input id="vendedor" name="vendedor" list="listaVendedores" autocomplete="off">
+              <datalist id="listaVendedores"></datalist>
             </div>
             <div class="campo">
               <label for="id_garantia_relacionada">
@@ -918,6 +957,20 @@ table.lineas tr:last-child td{border-bottom:0}
         a recoger.
       </p>
       <div id="colaSalida"></div>
+    </section>
+
+    <!-- ---------------------------------------------------------------
+         TRASLADOS — dónde está cada cosa
+         --------------------------------------------------------------- -->
+    <section class="pantalla" id="pantallaTraslados">
+      <h1>Traslados</h1>
+      <p class="subtitulo">
+        Dónde está cada unidad físicamente. El traslado va en dos pasos: quien
+        entrega marca el envío y quien recibe lo confirma. Mientras tanto la
+        unidad queda <b>en tránsito</b> — así un extravío entre la tienda y la
+        bodega no pasa desapercibido.
+      </p>
+      <div id="cajaTraslados"></div>
     </section>
 
     <!-- ---------------------------------------------------------------
@@ -1225,6 +1278,7 @@ function armarMenu() {
     opciones.push({ id:'Salida', rotulo:'Pendientes de salida' });
   }
   if (estado.permisos.consultar) {
+    opciones.push({ id:'Traslados', rotulo:'Traslados' });
     opciones.push({ id:'Buscar', rotulo:'Buscar' });
   }
   if (estado.permisos.verTablero) {
@@ -1266,8 +1320,8 @@ function precargar() {
 }
 
 function irA(id) {
-  ['Recibir', 'Taller', 'Resoluciones', 'NC', 'Salida', 'Buscar', 'Tablero',
-   'Config', 'Guardada'].forEach(function (p) {
+  ['Recibir', 'Taller', 'Resoluciones', 'NC', 'Salida', 'Traslados', 'Buscar',
+   'Tablero', 'Config', 'Guardada'].forEach(function (p) {
     var el = document.getElementById('pantalla' + p);
     if (el) el.classList.toggle('visible', p === id);
   });
@@ -1282,6 +1336,7 @@ function irA(id) {
   if (id === 'Resoluciones') cargarCola('resolucion');
   if (id === 'NC')           cargarCola('nc');
   if (id === 'Salida')       cargarCola('salida');
+  if (id === 'Traslados')    cargarTraslados();
   if (id === 'Tablero')      cargarTablero();
   if (id === 'Config')       cargarConfig();
 }
@@ -1306,6 +1361,7 @@ function prepararFormulario() {
     selTipo.appendChild(o);
   });
 
+  llenarDatalist('listaVendedores', estado.listas.vendedor || []);
   document.getElementById('fecha_recepcion').value = hoyISO();
   refrescarEmisor();
   refrescarOrigenDetalle();
@@ -1318,6 +1374,16 @@ function prepararFormulario() {
   document.getElementById('formulario').addEventListener('input', guardarBorrador);
   document.getElementById('formulario').addEventListener('change', guardarBorrador);
   document.getElementById('formulario').addEventListener('submit', guardar);
+}
+
+/* Sugerencias, no lista cerrada: se puede escoger de lo ya usado o escribir
+   uno nuevo, y el servidor lo agrega solo a la lista para la próxima vez. */
+function llenarDatalist(id, valores) {
+  var dl = document.getElementById(id);
+  if (!dl) return;
+  dl.innerHTML = (valores || []).map(function (v) {
+    return '<option value="' + escapar(v) + '">';
+  }).join('');
 }
 
 function llenarSelect(sel, valores, rotuloVacio) {
@@ -1627,7 +1693,7 @@ function leerFormulario() {
 
   ['num_boleta_manual','fecha_recepcion','origen_tipo','origen_detalle','emisor',
    'cliente_nombre','cliente_identificacion','cliente_telefono','cliente_correo',
-   'factura_referencia','fecha_compra','id_garantia_relacionada','observaciones']
+   'factura_referencia','fecha_compra','vendedor','id_garantia_relacionada','observaciones']
     .forEach(function (id) {
       var el = document.getElementById(id);
       datos[id] = el ? String(el.value).trim() : '';
@@ -1637,7 +1703,7 @@ function leerFormulario() {
   // pero si quedó algo digitado antes de cambiar de tipo, no se manda.
   if (datos.tipo_boleta === 'Revision interna') {
     ['cliente_nombre','cliente_identificacion','cliente_telefono','cliente_correo',
-     'factura_referencia','fecha_compra'].forEach(function (id) { datos[id] = ''; });
+     'factura_referencia','fecha_compra','vendedor'].forEach(function (id) { datos[id] = ''; });
   }
 
   datos.articulos = [];
@@ -1849,7 +1915,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase5-build-1';
+var BUILD_ESPERADO = 'fase6-build-1';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -2091,7 +2157,8 @@ async function cargarCola(cola, abrir) {
           (b.origen_detalle ? ' · ' + escapar(b.origen_detalle) : '') + '</div></td>' +
       '<td data-rotulo="' + ROTULO_PENDIENTES[cola] + '"><b style="color:var(--cian)">' + n +
         (n === 1 ? ' unidad' : ' unidades') + '</b></td>' +
-      '<td data-rotulo="En taller"><span class="dias ' + claseDias(b.semaforo) + '">' +
+      '<td data-rotulo="Dónde está">' + marbeteUbicacion(b) + '</td>' +
+      '<td data-rotulo="Desde que ingresó"><span class="dias ' + claseDias(b.semaforo) + '">' +
         textoDias(b.dias_en_taller) + '</span></td>' +
       '<td data-rotulo="Sin movimiento"><span class="dias ' + claseDias(b.semaforo) + '">' +
         textoDias(b.dias_sin_movimiento) + '</span></td>' +
@@ -2111,7 +2178,8 @@ async function cargarCola(cola, abrir) {
   caja.innerHTML = html +
     '<div class="envoltura-tabla"><table class="tabla-boletas"><thead><tr>' +
       '<th class="col-punto"></th><th>Boleta</th><th>Tipo</th><th>Cliente</th>' +
-      '<th>' + ROTULO_PENDIENTES[cola] + '</th><th>En taller</th><th>Sin movimiento</th>' +
+      '<th>' + ROTULO_PENDIENTES[cola] + '</th><th>Dónde está</th>' +
+      '<th>Desde que ingresó</th><th>Sin movimiento</th>' +
     '</tr></thead><tbody>' + filas + '</tbody></table></div>' +
     '<p class="subtitulo" style="margin-top:12px;font-size:.8rem">' +
       'Toque una boleta para ver sus unidades.</p>';
@@ -2157,7 +2225,7 @@ function abrirBoletaCola(cola, idGarantia) {
                              : escapar(b.cliente_nombre || '—')) + '</b></div>' +
         '<div><span class="etiqueta">Recibido</span>' +
           escapar(soloFecha(b.fecha_recepcion)) + '</div>' +
-        '<div><span class="etiqueta">En taller</span>' +
+        '<div><span class="etiqueta">Desde que ingresó</span>' +
           '<span class="dias ' + claseDias(b.semaforo) + '">' +
           textoDias(b.dias_en_taller) + '</span></div>' +
         '<div><span class="etiqueta">Estado</span>' +
@@ -2579,6 +2647,256 @@ function guardarResolucion(boton) {
 }
 
 /* ==========================================================================
+   TRASLADOS
+
+   Cada equipo se configura una vez con el lugar donde está, y a partir de ahí
+   la pantalla contesta las tres preguntas de quien la abre:
+     1. ¿Qué viene para acá y falta recibir?
+     2. ¿Qué tengo aquí para mandar?
+     3. ¿Qué salió de aquí y nadie ha recibido?   <- los extravíos
+
+   Ese tercer grupo es el que justifica los dos pasos. Con un solo paso no
+   existiría, y una pieza perdida entre la tienda y la bodega no se vería
+   nunca.
+   ========================================================================== */
+var LLAVE_LUGAR = 'garantias_lugar';
+var traslados = null;
+
+function miLugar() {
+  try { return localStorage.getItem(LLAVE_LUGAR) || ''; } catch (e) { return ''; }
+}
+
+function fijarLugar(v) {
+  try { localStorage.setItem(LLAVE_LUGAR, v); } catch (e) { /* modo privado */ }
+  cargarTraslados();
+}
+
+/** El marbete de ubicación de una boleta, para las tablas. */
+function marbeteUbicacion(b) {
+  var partes = b.ubicacion_partes;
+  if (!partes || !partes.length) {
+    return '<span class="marbete-ubi ' + (b.ubicacion_texto ? 'salio' : 'sin') + '">' +
+           escapar(b.ubicacion_texto || 'Sin ubicar') + '</span>';
+  }
+  return partes.map(function (p) {
+    var transito = p.lugar.indexOf('→') === 0;
+    var sin = p.lugar === 'Sin ubicar';
+    return '<span class="marbete-ubi ' + (transito ? 'transito' : sin ? 'sin' : '') + '">' +
+      (partes.length > 1 || p.n > 1 ? p.n + ' · ' : '') + escapar(p.lugar) + '</span>';
+  }).join('');
+}
+
+async function cargarTraslados() {
+  var caja = document.getElementById('cajaTraslados');
+  ocupada(caja, true);
+
+  var r = await api('ubicaciones', { lugar: miLugar() });
+  ocupada(caja, false);
+
+  if (!r.ok) {
+    caja.innerHTML = '<div class="aviso error"><b>No se pudo cargar</b>' +
+      (r.errores || [r.detalle || r.error]).join(' ') + '</div>';
+    return;
+  }
+  traslados = r;
+
+  var lugar = miLugar();
+  var html = barraLugar(r, lugar);
+
+  if (!lugar) {
+    html += '<div class="vacio"><span class="icono">📍</span>' +
+      'Escoja arriba dónde está este equipo.<br>' +
+      '<span style="font-size:.86rem">Se recuerda en este aparato, así que solo hay ' +
+      'que hacerlo una vez.</span></div>';
+    caja.innerHTML = html;
+    return;
+  }
+
+  html += grupoTraslado('por_recibir', r,
+    'Por recibir aquí',
+    'Viene en camino a ' + lugar + '. Al recibirlo se confirma que llegó.',
+    'No hay nada en camino hacia acá.');
+
+  html += grupoTraslado('enviadas', r,
+    'Salió de aquí y nadie lo ha recibido',
+    'Ya se entregó, pero en el destino todavía no lo confirman. Si lleva días, ' +
+    'vale la pena preguntar.',
+    'Todo lo que salió de aquí ya fue recibido.');
+
+  html += grupoTraslado('aqui', r,
+    'Está aquí',
+    'Se puede enviar a otro lugar, toda la boleta o solo algunas unidades.',
+    'No hay nada en ' + lugar + '.');
+
+  caja.innerHTML = html;
+  window.scrollTo(0, 0);
+}
+
+function barraLugar(r, lugar) {
+  var opciones = (r.lugares || []).map(function (l) {
+    return '<option value="' + escapar(l) + '"' + (l === lugar ? ' selected' : '') + '>' +
+           escapar(l) + '</option>';
+  }).join('');
+
+  var resumen = Object.keys(r.conteo || {}).sort().map(function (k) {
+    return escapar(k) + ' ' + r.conteo[k];
+  }).join(' · ');
+
+  return '<div class="barra-lugar">' +
+    '<label style="font-size:.85rem;color:var(--gris)">Este equipo está en</label>' +
+    '<select onchange="fijarLugar(this.value)">' +
+      '<option value="">— Escoja —</option>' + opciones +
+    '</select>' +
+    (resumen ? '<span class="cuenta">En total: ' + resumen + '</span>' : '') +
+  '</div>';
+}
+
+function grupoTraslado(cual, r, titulo, ayuda, vacio) {
+  var grupos = r[cual] || [];
+  var unidades = grupos.reduce(function (a, g) { return a + g.unidades.length; }, 0);
+
+  var cuerpo = grupos.length
+    ? grupos.map(function (g) { return cajaBoletaTraslado(cual, g, r); }).join('')
+    : '<div class="vacio" style="padding:18px"><span class="icono">✅</span>' +
+      escapar(vacio) + '</div>';
+
+  return '<div class="grupo-traslado">' +
+    '<h2>' + escapar(titulo) +
+      (unidades ? '<span class="n">' + unidades +
+        (unidades === 1 ? ' unidad' : ' unidades') + '</span>' : '') +
+    '</h2>' +
+    '<span class="sub">' + escapar(ayuda) + '</span>' +
+    cuerpo +
+  '</div>';
+}
+
+function cajaBoletaTraslado(cual, g, r) {
+  var b = g.boleta;
+  var esInterna = (b.tipo_boleta === 'Revision interna');
+  var clave = cual + '|' + b.id_garantia;
+
+  var filas = g.unidades.map(function (l) {
+    return '<label class="fila-unidad">' +
+      '<input type="checkbox" data-linea="' + escapar(l.id_linea) + '" checked>' +
+      '<span class="desc"><b>' + escapar(l.descripcion) + '</b>' +
+        (l.marca ? ' · ' + escapar(l.marca) : '') +
+        '<span class="sub">' + escapar(l.id_linea) +
+          (l.dias_ahi !== null && l.dias_ahi !== undefined
+            ? ' · ' + escapar(textoDias(l.dias_ahi)) +
+              (cual === 'enviadas' ? ' en camino' : ' aquí')
+            : '') +
+        '</span>' +
+      '</span>' +
+      '<span class="marbete-ubi ' + (l.ubicacion_estado === 'transito' ? 'transito' : '') + '">' +
+        escapar(l.ubicacion_texto) + '</span>' +
+    '</label>';
+  }).join('');
+
+  var acciones = '';
+  if (r.puede_mover) {
+    if (cual === 'aqui') {
+      var destinos = (r.lugares || []).filter(function (l) { return l !== r.lugar; })
+        .map(function (l) { return '<option value="' + escapar(l) + '">' + escapar(l) + '</option>'; })
+        .join('');
+      acciones =
+        '<select data-destino style="width:auto;min-width:160px">' +
+          '<option value="">Enviar a…</option>' + destinos + '</select>' +
+        '<button class="btn primario pequeno" onclick="enviarSeleccion(this)">Enviar</button>';
+    } else if (cual === 'por_recibir') {
+      acciones = '<button class="btn primario pequeno" onclick="recibirSeleccion(this)">' +
+                 'Recibir aquí</button>';
+    } else {
+      acciones = '<button class="btn secundario pequeno" onclick="cancelarSeleccion(this)">' +
+                 'No salió: devolver a ' + escapar(r.lugar) + '</button>';
+    }
+  }
+
+  return '<div class="caja-boleta ' + (cual === 'enviadas' ? 'alerta' : '') + '" ' +
+      'data-bloque data-clave="' + escapar(clave) + '">' +
+    '<div class="cab">' +
+      '<div><span class="gar">' + escapar(b.id_garantia) + '</span>' +
+        '<span class="cli"> · ' +
+        (esInterna ? 'Mercadería de la empresa' : escapar(b.cliente_nombre || '—')) +
+        '</span></div>' +
+      '<span class="dias ' + claseDias(b.semaforo) + '">' +
+        escapar(textoDias(b.dias_en_taller)) + ' desde que ingresó</span>' +
+    '</div>' +
+    filas +
+    (acciones
+      ? '<div class="acciones" style="margin-top:12px;align-items:center">' +
+        '<button class="btn secundario pequeno" onclick="marcarTodas(this,true)">Todas</button>' +
+        '<button class="btn secundario pequeno" onclick="marcarTodas(this,false)">Ninguna</button>' +
+        acciones + '<span class="sub" data-aviso-cfg></span></div>'
+      : '') +
+  '</div>';
+}
+
+function marcarTodas(boton, si) {
+  var caja = boton.closest('[data-bloque]');
+  Array.prototype.forEach.call(caja.querySelectorAll('[data-linea]'), function (c) {
+    c.checked = si;
+  });
+}
+
+function lineasMarcadas(caja) {
+  return Array.prototype.slice
+    .call(caja.querySelectorAll('[data-linea]:checked'))
+    .map(function (c) { return c.dataset.linea; });
+}
+
+async function accionTraslado(boton, accion, extra, rotuloOk) {
+  var caja = boton.closest('[data-bloque]');
+  var ids = lineasMarcadas(caja);
+
+  if (!ids.length) { avisoCfg(caja, 'error', 'No hay ninguna unidad marcada.'); return; }
+
+  var datos = { id_lineas: ids };
+  for (var k in extra) if (extra.hasOwnProperty(k)) datos[k] = extra[k];
+
+  var previo = boton.textContent;
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+  avisoCfg(caja, 'ok', '');
+
+  var r = await api(accion, datos);
+
+  if (!r.ok) {
+    boton.disabled = false;
+    boton.textContent = previo;
+    avisoCfg(caja, 'error', (r.errores || [r.detalle || r.error]).join(' '));
+    return;
+  }
+
+  /* Si algunas se movieron y otras no, se dice. Un "listo" a secas cuando dos
+     de cinco unidades se quedaron atrás es justo lo que este sistema evita. */
+  var texto = rotuloOk;
+  if (r.saltadas && r.saltadas.length) {
+    texto += ' · No se movieron ' + r.saltadas.length + ': ' + r.saltadas.join('; ');
+    avisoCfg(caja, 'error', texto);
+    setTimeout(cargarTraslados, 2500);
+    return;
+  }
+  avisoCfg(caja, 'ok', texto);
+  setTimeout(cargarTraslados, 800);
+}
+
+function enviarSeleccion(boton) {
+  var caja = boton.closest('[data-bloque]');
+  var sel = caja.querySelector('[data-destino]');
+  if (!sel.value) { avisoCfg(caja, 'error', 'Escoja a dónde se envía.'); return; }
+  accionTraslado(boton, 'enviar', { destino: sel.value },
+                 'Enviado a ' + sel.value + '. Falta que lo reciban allá.');
+}
+
+function recibirSeleccion(boton) {
+  accionTraslado(boton, 'recibir', {}, 'Recibido en ' + miLugar() + '.');
+}
+
+function cancelarSeleccion(boton) {
+  accionTraslado(boton, 'cancelarEnvio', {}, 'Envío cancelado.');
+}
+
+/* ==========================================================================
    TABLERO
 
    Los números se calculan en el servidor (ver regla de las fechas). Aquí solo
@@ -2890,6 +3208,11 @@ function formSucursal(su, id) {
       '<div class="campo"><label>Correo' +
         '<span class="ayuda">Si queda vacío no se imprime</span></label>' +
         '<input data-cfg="correo" value="' + escapar(su.correo || '') + '"></div>' +
+      '<div class="campo"><label>Ubicación física' +
+        '<span class="ayuda">Dónde queda esta sucursal. Dos orígenes de venta pueden ' +
+          'compartir un mismo lugar</span></label>' +
+        '<select data-cfg="ubicacion">' +
+          opcionesDe((estado.listas.ubicacion || []), su.ubicacion) + '</select></div>' +
       '<div class="campo"><label>Archivo del logo' +
         '<span class="ayuda">El archivo tiene que estar subido junto al index.html</span></label>' +
         '<input data-cfg="logo_url" value="' + escapar(su.logo_url || '') + '"></div>' +
@@ -2997,7 +3320,9 @@ function guardarUsuario(boton) {
 var ROTULO_LISTA = {
   diagnostico:     'Diagnósticos del técnico',
   resolucion:      'Resoluciones del administrador',
-  tipo_movimiento: 'Tipos de movimiento de salida'
+  tipo_movimiento: 'Tipos de movimiento de salida',
+  ubicacion:       'Ubicaciones físicas',
+  vendedor:        'Vendedores'
 };
 
 function vistaListas() {
@@ -3325,7 +3650,9 @@ function tablaBoletas(items) {
           '<div class="sub">' + escapar(b.recibido_por_nombre || b.recibido_por || '') + '</div>' +
         '</td>' +
 
-        '<td data-rotulo="En taller">' +
+        '<td data-rotulo="Dónde está">' + marbeteUbicacion(b) + '</td>' +
+
+        '<td data-rotulo="Desde que ingresó">' +
           '<span class="dias ' + claseDias(b.semaforo) + '">' +
           textoDias(b.dias_en_taller) + '</span>' +
         '</td>' +
@@ -3344,7 +3671,8 @@ function tablaBoletas(items) {
   return '' +
     '<div class="envoltura-tabla"><table class="tabla-boletas"><thead><tr>' +
       '<th class="col-punto"></th><th>Boleta</th><th>Tipo</th><th>Cliente</th>' +
-      '<th>Ingreso</th><th>En taller</th><th>Sin movimiento</th><th>Estado</th>' +
+      '<th>Ingreso</th><th>Dónde está</th><th>Desde que ingresó</th>' +
+      '<th>Sin movimiento</th><th>Estado</th>' +
     '</tr></thead><tbody>' + filas + '</tbody></table></div>' +
     '<p class="subtitulo" style="margin-top:12px;font-size:.8rem">' +
       'Toque una fila para ver el detalle e imprimir.</p>';
@@ -3396,6 +3724,10 @@ function paso(cual, valor, quien, cuando, extra) {
 
 function fichaUnidad(l) {
   var pasos = '';
+
+  if (l.ubicacion_texto) {
+    pasos += paso('Dónde está', l.ubicacion_texto, l.ubicacion_por, l.ubicacion_desde);
+  }
 
   pasos += paso('Recibido con', l.dano_reportado, '', '',
                 l.accesorios_recibidos ? 'Accesorios: ' + l.accesorios_recibidos : '');
@@ -3500,14 +3832,24 @@ function tarjetaResultado(b, lineas, conBotonImprimir, historial) {
           escapar(soloFecha(b.fecha_recepcion)) +
           (b.origen_tipo ? ' · ' + escapar(b.origen_tipo) : '') +
           (b.origen_detalle ? ' (' + escapar(b.origen_detalle) + ')' : '') + '</div>' +
+        (b.factura_referencia || b.vendedor || b.fecha_compra
+          ? '<div class="dato ancho"><span class="etiqueta">Venta que respalda</span>' +
+            (b.factura_referencia ? 'Factura ' + escapar(b.factura_referencia) : 'Sin factura') +
+            (b.fecha_compra ? ' · ' + escapar(soloFecha(b.fecha_compra)) : '') +
+            (b.vendedor ? ' · vendió ' + escapar(b.vendedor) : '') + '</div>'
+          : '') +
         '<div class="dato"><span class="etiqueta">Recibido por</span>' +
           escapar(b.recibido_por_nombre || b.recibido_por || '—') + '</div>' +
         '<div class="dato"><span class="etiqueta">A nombre de</span>' +
           escapar((emisorDe(b) || {}).razon_social || '—') + '</div>' +
+        (b.ubicacion_texto
+          ? '<div class="dato"><span class="etiqueta">Dónde está</span>' +
+            marbeteUbicacion(b) + '</div>'
+          : '') +
         (b.dias_en_taller !== undefined && b.dias_en_taller !== null
           ? '<div class="dato"><span class="etiqueta">Tiempo</span>' +
             '<span class="dias ' + claseDias(b.semaforo) + '">' +
-            textoDias(b.dias_en_taller) + ' en taller</span> · ' +
+            textoDias(b.dias_en_taller) + ' desde que ingresó</span> · ' +
             textoDias(b.dias_sin_movimiento) + ' sin movimiento</div>'
           : '') +
       '</div>';
@@ -3674,6 +4016,7 @@ function construirImpresion(b, lineas) {
             '<div><span>Correo:</span> ' + escapar(b.cliente_correo || '—') + '</div>' +
             '<div><span>Factura:</span> ' + escapar(b.factura_referencia || '—') + '</div>' +
             '<div><span>Fecha de factura:</span> ' + escapar(soloFecha(b.fecha_compra) || '—') + '</div>' +
+            '<div><span>Vendedor:</span> ' + escapar(b.vendedor || '—') + '</div>' +
             '<div><span>Origen:</span> ' + escapar(b.origen_tipo || '—') +
               (b.origen_detalle ? ' — ' + escapar(b.origen_detalle) : '') + '</div>' +
           '</div></div>') +
@@ -3852,6 +4195,14 @@ function construirReporteTaller(b, lineas) {
                 ? '<div><span>Teléfono:</span> ' + escapar(b.cliente_telefono) + '</div>'
                 : '')) +
           '<div><span>Recibido:</span> ' + escapar(soloFecha(b.fecha_recepcion)) + '</div>' +
+          /* La venta que respalda la garantía: sin la factura, el reporte no
+             prueba que el artículo se compró aquí. */
+          (b.factura_referencia
+            ? '<div><span>Factura:</span> ' + escapar(b.factura_referencia) +
+              (b.fecha_compra ? ' del ' + escapar(soloFecha(b.fecha_compra)) : '') + '</div>'
+            : '') +
+          (b.vendedor
+            ? '<div><span>Vendedor:</span> ' + escapar(b.vendedor) + '</div>' : '') +
           (b.fecha_cierre
             ? '<div><span>Cerrada:</span> ' + escapar(soloFecha(b.fecha_cierre)) + '</div>'
             : '<div><span>Estado:</span> ' + escapar(b.estado_boleta || '') + '</div>') +
