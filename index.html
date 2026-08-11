@@ -1915,7 +1915,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase6-build-4';
+var BUILD_ESPERADO = 'fase6-build-5';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
@@ -2102,6 +2102,21 @@ async function cargarCola(cola, abrir) {
   }
 
   estado.colas[cola] = r;
+  pintarCola(cola, abrir);
+}
+
+/**
+ * Dibuja una cola con lo que YA está en memoria, sin pedirle nada al servidor.
+ *
+ * Está separada de cargarCola a propósito. Después de guardar una unidad, el
+ * servidor devuelve esa unidad ya actualizada y a cuál cola pertenece ahora:
+ * con eso la pantalla se rehace sola. Volver a pedir la cola entera era un
+ * viaje completo al servidor para redibujar una fila que ya conocíamos.
+ */
+function pintarCola(cola, abrir) {
+  var caja = cajaDeCola(cola);
+  var r = estado.colas[cola];
+  if (!r) { cargarCola(cola, abrir); return; }
 
   if (!r.total_boletas) {
     caja.innerHTML = '<div class="vacio"><span class="icono">✅</span>' +
@@ -2192,6 +2207,54 @@ function buscarGrupo(cola, idGarantia) {
     if (r.boletas[i].boleta.id_garantia === idGarantia) return r.boletas[i];
   }
   return null;
+}
+
+/**
+ * Aplica en pantalla lo que el servidor acaba de confirmar, sin volver a
+ * pedir la cola.
+ *
+ * Devuelve true si pudo. Si algo no calza —la boleta ya no está en memoria,
+ * el servidor no mandó la unidad— devuelve false y quien llama recarga como
+ * antes. **Ante la duda, recargar.** Una pantalla que se quedó atrás es peor
+ * que una espera: hace trabajar dos veces la misma unidad.
+ *
+ * Quién decide a cuál cola pasó la unidad: el SERVIDOR, en `cola_actual`.
+ * Aquí no se repite ninguna regla de negocio — repetirlas es como ya se
+ * quedaron atrás los permisos y la ubicación.
+ */
+function aplicarGuardadoLocal(cola, r) {
+  if (!r || !r.linea || r.cola_actual === undefined) return false;
+
+  var datos = estado.colas[cola];
+  var g = buscarGrupo(cola, r.id_garantia);
+  if (!datos || !g) return false;
+
+  var i = -1;
+  for (var k = 0; k < g.pendientes.length; k++) {
+    if (g.pendientes[k].id_linea === r.id_linea) { i = k; break; }
+  }
+  if (i < 0) return false;
+
+  if (r.cola_actual === cola) {
+    g.pendientes[i] = r.linea;          // sigue aquí, pero cambió
+  } else {
+    g.pendientes.splice(i, 1);          // se fue a otra cola, o ya salió
+  }
+
+  if (r.estado_boleta) g.boleta.estado_boleta = r.estado_boleta;
+  if (r.ubicacion_boleta) {
+    g.boleta.ubicacion_texto  = r.ubicacion_boleta.texto;
+    g.boleta.ubicacion_partes = r.ubicacion_boleta.partes;
+  }
+
+  // Una boleta sin nada pendiente sale de la cola.
+  datos.boletas = datos.boletas.filter(function (x) { return x.pendientes.length > 0; });
+  datos.total_boletas = datos.boletas.length;
+  datos.total_unidades = datos.boletas.reduce(function (n, x) {
+    return n + x.pendientes.length;
+  }, 0);
+
+  return true;
 }
 
 /** Abre una boleta de la cola y muestra sus unidades por trabajar. */
@@ -2583,7 +2646,31 @@ async function accionSobreUnidad(boton, accion, datos, rotuloOk) {
   aviso.style.color = 'var(--verde)';
   aviso.textContent = rotuloOk;
   var idBoleta = estado.boletaAbierta['salida'] || '';
-  setTimeout(function () { cargarCola('salida', idBoleta); }, 900);
+  refrescarTrasGuardar('salida', r, idBoleta);
+}
+
+/**
+ * Rehace la pantalla después de guardar.
+ *
+ * Antes esto esperaba 900 milisegundos a propósito y después pedía la cola
+ * completa otra vez. Eran casi un segundo inventado más un viaje entero al
+ * servidor, justo donde la persona está esperando, para redibujar algo que ya
+ * sabíamos. Ahora se usa lo que el servidor devolvió al guardar y no se pide
+ * nada; si por lo que sea no calza, se recarga como antes.
+ *
+ * La pausa corta que queda no es tiempo de espera: es para que se alcance a
+ * leer el "Guardado" y a ver la unidad desvanecerse. Sin ella el cambio de
+ * pantalla es tan brusco que parece que no pasó nada.
+ */
+function refrescarTrasGuardar(cola, r, idBoleta) {
+  var local = aplicarGuardadoLocal(cola, r);
+  setTimeout(function () {
+    if (!local) { cargarCola(cola, idBoleta); return; }
+
+    var g = idBoleta ? buscarGrupo(cola, idBoleta) : null;
+    if (g && grupoVisible(cola, g)) abrirBoletaCola(cola, idBoleta);
+    else pintarCola(cola);
+  }, 450);
 }
 
 function avisarCliente(boton) {
@@ -2635,7 +2722,7 @@ async function guardarUnidad(boton, accion, cola, rotuloOk) {
 
   // Se vuelve a entrar a la misma boleta si todavía le quedan unidades: al
   // técnico que va por la tercera de cinco no hay que devolverlo a la lista.
-  setTimeout(function () { cargarCola(cola, idBoleta); }, 900);
+  refrescarTrasGuardar(cola, r, idBoleta);
 }
 
 function guardarDiagnostico(boton) {
