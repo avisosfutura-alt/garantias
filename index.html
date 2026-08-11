@@ -1113,32 +1113,80 @@ async function api(accion, datos) {
     return { ok:false, error:'SIN_CONFIGURAR',
              errores:['Falta pegar la URL del Web App en CONFIG.API_URL.'] };
   }
+  /* Los tres fallos posibles se separan A PROPOSITO.
+   *
+   * Antes todo esto era un solo try y cualquier tropiezo decia "Revise el
+   * internet". Eso es MENTIRA en dos de los tres casos, y manda a la persona
+   * a revisar el wifi cuando el problema es el script. Peor: si el script
+   * responde una pagina de error de Google, res.json() revienta y la
+   * pantalla culpaba a la conexion — que estaba perfecta.
+   *
+   * Un mensaje que apunta al culpable equivocado es peor que no tener
+   * mensaje: hace perder la tarde en el lugar donde no esta el problema. */
+
+  // 1. No se llegó al servidor. Esto sí es la conexión.
+  var res;
   try {
-    var res = await fetch(CONFIG.API_URL, {
+    res = await fetch(CONFIG.API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({ accion: accion, token: estado.token, datos: datos || {} })
     });
-    var salida = await res.json();
-
-    // El token de Google dura una hora. Al vencerse no se cierra la sesión de
-    // golpe: se devuelve a la pantalla de ingreso SIN desactivar la selección
-    // automática, para que Google vuelva a entrar solo y el usuario apenas
-    // vea un parpadeo.
-    //
-    // Excepción: durante el propio 'login' no se hace nada de eso, porque ahí
-    // no hay sesión que cerrar y el mensaje del servidor es justamente lo que
-    // hay que enseñarle a quien está instalando.
-    if (salida.error === 'TOKEN_INVALIDO' && accion !== 'login') {
-      cerrarSesion('Su sesión venció. Entrando de nuevo…', false);
-      return { ok:false, error:'TOKEN_INVALIDO', errores:['Sesión vencida.'] };
-    }
-    return salida;
-
   } catch (err) {
     return { ok:false, error:'SIN_CONEXION',
-             errores:['No se pudo conectar. Revise el internet e intente de nuevo.'] };
+             errores:['No se pudo llegar al servidor. Esto sí suele ser el internet: ' +
+                      'revise la conexión e intente de nuevo.'] };
   }
+
+  // 2. Contestó, pero se cortó a medio camino.
+  var texto;
+  try {
+    texto = await res.text();
+  } catch (err) {
+    return { ok:false, error:'RESPUESTA_CORTADA',
+             errores:['El servidor empezó a contestar y se cortó. Intente de nuevo.'] };
+  }
+
+  /* 3. Contestó algo que no es JSON. NO es un problema de internet: el
+   * servidor habló, pero mandó una página de Google en vez de datos. Casi
+   * siempre es una de estas tres, y por eso se nombran: */
+  var salida;
+  try {
+    salida = JSON.parse(texto);
+  } catch (err) {
+    var pista = 'El servidor contestó (código ' + res.status + '), pero no con datos. ' +
+                'Esto NO es el internet.';
+    var muestra = String(texto || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+
+    if (res.status === 401 || res.status === 403 || /iniciar sesi|sign in|accounts\.google/i.test(texto)) {
+      pista += ' Google está pidiendo iniciar sesión: la implementación del Web App ' +
+               'quedó con acceso restringido. Debe decir "Cualquier usuario".';
+    } else if (/error|excepci|exception/i.test(muestra)) {
+      pista += ' El script se cayó o se quedó sin tiempo. Abra el Apps Script → ' +
+               'Ejecuciones, y busque la que falló: ahí sale la línea exacta.';
+    } else {
+      pista += ' Revise que la URL del Web App sea la vigente y que se haya ' +
+               'implementado una versión nueva.';
+    }
+
+    return { ok:false, error:'RESPUESTA_NO_JSON', http: res.status,
+             muestra: muestra.slice(0, 200),
+             errores: [pista, muestra ? 'Contestó: ' + muestra.slice(0, 200) : ''] };
+  }
+
+  // El token de Google dura una hora. Al vencerse no se cierra la sesión de
+  // golpe: se devuelve a la pantalla de ingreso SIN desactivar la selección
+  // automática, para que Google vuelva a entrar solo y el usuario apenas
+  // vea un parpadeo.
+  //
+  // Excepción: durante el propio 'login' no se hace nada de eso, porque ahí
+  // no hay sesión que cerrar y el mensaje del servidor es justamente lo que
+  // hay que enseñarle a quien está instalando.
+  if (salida.error === 'TOKEN_INVALIDO' && accion !== 'login') {
+    cerrarSesion('Su sesión venció. Entrando de nuevo…', false);
+    return { ok:false, error:'TOKEN_INVALIDO', errores:['Sesión vencida.'] };
+  }
+  return salida;
 }
 
 /* ==========================================================================
@@ -1915,7 +1963,7 @@ function recuperarBorrador() {
    creer que se perdieron las boletas, o dejar de revisar el taller. Por eso
    la app ahora se da cuenta sola y lo dice arriba de todo.
    -------------------------------------------------------------------------- */
-var BUILD_ESPERADO = 'fase6-build-5';
+var BUILD_ESPERADO = 'fase6-build-6';
 
 function revisarVersiones() {
   var caja = document.getElementById('avisoVersion');
