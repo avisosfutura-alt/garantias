@@ -13,7 +13,7 @@
  * Eso obliga a todos los equipos a descargar el archivo nuevo.
  ******************************************************************************/
 
-var VERSION = 'garantias-v33';
+var VERSION = 'garantias-v34';
 
 var CASCARON = [
   './',
